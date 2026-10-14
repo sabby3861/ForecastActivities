@@ -13,7 +13,7 @@ The UI is plain SwiftUI. The brief said architecture, correctness and testing ma
 - iOS 17+, SwiftUI, Swift 6 language mode with strict concurrency on.
 - `@Observable` view models, async/await for everything async. I didn't use Combine because cancellation with tasks made "latest search wins" simple.
 - Protocol-based constructor injection, wired up by hand in `AppContainer`. With three dependencies, a DI framework would be overkill.
-- XCTest.
+- XCTest for most tests. Swift Testing for the table-style ones (WMO codes, score bands, error mapping), where `@Test(arguments:)` reports each row separately.
 - No third-party dependencies.
 - The Xcode project is generated with XcodeGen from `project.yml`. The generated project is committed, so you don't need XcodeGen to build.
 
@@ -50,7 +50,7 @@ cd Packages/ActivityKit
 swift test
 ```
 
-`make test` does the same. The tests run on macOS without a simulator and take about a second. There are 72 of them:
+`make test` does the same. The tests run on macOS without a simulator and take about a second. The same tests also run from the app scheme: press ⌘U in Xcode, or run `make test-xcode` to use the first available iPhone simulator. CI runs both on every push to `main` and on pull requests. There are 70 XCTest tests, plus 9 Swift Testing tests that expand to 68 parameterised cases:
 
 - Domain: the curve helpers, each activity's scoring rules, and the ranking (sort order, tie-breaks, averaging, best day).
 - Data: request building, error mapping for status codes, timeouts, offline and bad JSON, and mapping real-shaped Open-Meteo payloads, including the awkward ones (no `results` key, `null` values inside the daily arrays, arrays of different lengths).
@@ -58,7 +58,7 @@ swift test
 
 The SwiftUI views aren't tested. They're mostly a `switch` over state. Snapshot tests would be the right tool, but I didn't want to add a dependency for them.
 
-Known issue: the package test targets aren't hooked up to the Xcode scheme yet, so ⌘U doesn't work. Run `swift test` for now. Fixing this is next on my list.
+One thing that caught me out: XcodeGen only accepts package test targets in a scheme written as `- package: ActivityKit/ActivityDomainTests`. The plain `ActivityKit/ActivityDomainTests` form fails with "invalid project reference".
 
 ## API usage
 

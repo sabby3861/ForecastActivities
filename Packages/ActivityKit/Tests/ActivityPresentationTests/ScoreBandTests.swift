@@ -1,22 +1,22 @@
 import ActivityDomain
 import ActivityPresentation
-import XCTest
+import Testing
 
-final class ScoreBandTests: XCTestCase {
-    func testBands_coverEveryScoreWithoutGaps() {
-        XCTAssertEqual(Score(value: 100).band, .excellent)
-        XCTAssertEqual(Score(value: 85).band, .excellent, "85 is the first excellent score")
-        XCTAssertEqual(Score(value: 84).band, .good)
-        XCTAssertEqual(Score(value: 70).band, .good)
-        XCTAssertEqual(Score(value: 69).band, .fair)
-        XCTAssertEqual(Score(value: 40).band, .fair)
-        XCTAssertEqual(Score(value: 39).band, .poor)
-        XCTAssertEqual(Score(value: 0).band, .poor)
+@Suite("Score bands")
+struct ScoreBandTests {
+    // Both edges of every band, so a gap or overlap between bands fails here.
+    @Test("Band boundaries", arguments: [
+        (100, Score.Band.excellent), (85, .excellent),
+        (84, .good), (70, .good),
+        (69, .fair), (40, .fair),
+        (39, .poor), (0, .poor),
+    ])
+    func band(value: Int, expected: Score.Band) {
+        #expect(Score(value: value).band == expected)
     }
 
-    func testEveryActivity_hasADisplayName() {
-        for activity in Activity.allCases {
-            XCTAssertFalse(activity.displayName.isEmpty, "\(activity) has no display name")
-        }
+    @Test("Every activity has a display name", arguments: Activity.allCases)
+    func displayName(activity: Activity) {
+        #expect(!activity.displayName.isEmpty)
     }
 }
