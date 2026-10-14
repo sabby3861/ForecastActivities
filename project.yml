@@ -55,3 +55,7 @@ schemes:
     test:
       config: Debug
       gatherCoverageData: true
+      targets:
+        - package: ActivityKit/ActivityDomainTests
+        - package: ActivityKit/ActivityDataTests
+        - package: ActivityKit/ActivityPresentationTests

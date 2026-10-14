@@ -40,6 +40,39 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "ActivityDomainTests"
+               BuildableName = "ActivityDomainTests"
+               BlueprintName = "ActivityDomainTests"
+               ReferencedContainer = "container:Packages/ActivityKit">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "ActivityDataTests"
+               BuildableName = "ActivityDataTests"
+               BlueprintName = "ActivityDataTests"
+               ReferencedContainer = "container:Packages/ActivityKit">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "ActivityPresentationTests"
+               BuildableName = "ActivityPresentationTests"
+               BlueprintName = "ActivityPresentationTests"
+               ReferencedContainer = "container:Packages/ActivityKit">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>
