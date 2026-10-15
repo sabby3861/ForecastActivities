@@ -22,11 +22,11 @@ enum PreviewData {
             date: date,
             maxTemperatureC: 14 + Double(offset),
             minTemperatureC: 7 + Double(offset),
+            condition: wet ? .rain : .partlyCloudy,
             precipitationMM: wet ? 6 : 0,
             snowfallCM: 0,
             precipitationProbability: wet ? 80 : 10,
-            maxWindSpeedKmh: 15 + Double(offset * 3),
-            condition: wet ? .rain : .partlyCloudy
+            maxWindSpeedKmh: 15 + Double(offset * 3)
         )
     }
 

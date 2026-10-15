@@ -42,25 +42,25 @@ public enum WeatherCondition: Hashable, Sendable {
     }
 }
 
-/// One day of forecast, already converted to the units the domain reasons in.
+/// One day of forecast, in the units the scoring rules use.
 ///
-/// This is deliberately *not* the Open-Meteo shape: the API returns parallel arrays with
-/// nullable entries; the domain wants one well-formed value object per day so the scoring
-/// rules never have to handle `nil`.
+/// Date, temperatures and weather code are required; the mapper drops a day without them.
+/// Everything else is optional because the API can return `null` for it, and a missing
+/// value is left out of the score rather than guessed.
 public struct DailyWeather: Identifiable, Hashable, Sendable {
     /// Local midnight for the forecast day, in the location's time zone.
     public let date: Date
     public let maxTemperatureC: Double
     public let minTemperatureC: Double
-    /// Total precipitation (rain + snow water equivalent) in millimetres.
-    public let precipitationMM: Double
-    /// Fresh snowfall in centimetres.
-    public let snowfallCM: Double
-    /// Maximum precipitation probability for the day, 0–100.
-    public let precipitationProbability: Int
-    /// Maximum 10 m wind speed in km/h.
-    public let maxWindSpeedKmh: Double
     public let condition: WeatherCondition
+    /// Total precipitation (rain + snow water equivalent) in millimetres.
+    public let precipitationMM: Double?
+    /// Fresh snowfall in centimetres.
+    public let snowfallCM: Double?
+    /// Maximum precipitation probability for the day, 0–100.
+    public let precipitationProbability: Int?
+    /// Maximum 10 m wind speed in km/h.
+    public let maxWindSpeedKmh: Double?
 
     public var id: Date { date }
 
@@ -68,28 +68,27 @@ public struct DailyWeather: Identifiable, Hashable, Sendable {
         date: Date,
         maxTemperatureC: Double,
         minTemperatureC: Double,
-        precipitationMM: Double,
-        snowfallCM: Double,
-        precipitationProbability: Int,
-        maxWindSpeedKmh: Double,
-        condition: WeatherCondition
+        condition: WeatherCondition,
+        precipitationMM: Double?,
+        snowfallCM: Double?,
+        precipitationProbability: Int?,
+        maxWindSpeedKmh: Double?
     ) {
         self.date = date
         self.maxTemperatureC = maxTemperatureC
         self.minTemperatureC = minTemperatureC
+        self.condition = condition
         self.precipitationMM = precipitationMM
         self.snowfallCM = snowfallCM
-        self.precipitationProbability = min(max(precipitationProbability, 0), 100)
+        self.precipitationProbability = precipitationProbability.map { min(max($0, 0), 100) }
         self.maxWindSpeedKmh = maxWindSpeedKmh
-        self.condition = condition
     }
 }
 
 /// A multi-day forecast for a city.
 public struct Forecast: Hashable, Sendable {
     public let city: City
-    /// The location's time zone — needed to label days correctly (a "Tuesday" in Sydney
-    /// is not the device's Tuesday).
+    /// The location's time zone, used to label days (Sydney's Tuesday, not the device's).
     public let timeZone: TimeZone
     public let days: [DailyWeather]
 

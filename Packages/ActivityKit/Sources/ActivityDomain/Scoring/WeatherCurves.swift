@@ -33,12 +33,14 @@ public enum WeatherCurves {
         return min(max(value / cap, 0), 1)
     }
 
-    /// Combines weighted 0…1 factors into a `Score`. Weights are normalised, so callers
-    /// can use any convenient scale (e.g. 45/25/15/15) and still get a 0…100 result.
-    public static func combine(_ factors: [(weight: Double, value: Double)]) -> Score {
-        let totalWeight = factors.reduce(0) { $0 + $1.weight }
+    /// Combines weighted 0…1 factors into a `Score`. Weights are normalised, so any scale
+    /// works. A `nil` factor (missing input) is dropped and the remaining weights are
+    /// rescaled, so a gap in the data neither helps nor hurts the score.
+    public static func combine(_ factors: [(weight: Double, value: Double?)]) -> Score {
+        let known = factors.compactMap { factor in factor.value.map { (weight: factor.weight, value: $0) } }
+        let totalWeight = known.reduce(0) { $0 + $1.weight }
         guard totalWeight > 0 else { return .min }
-        let weighted = factors.reduce(0) { $0 + $1.weight * min(max($1.value, 0), 1) }
+        let weighted = known.reduce(0) { $0 + $1.weight * min(max($1.value, 0), 1) }
         return Score(normalised: weighted / totalWeight)
     }
 }

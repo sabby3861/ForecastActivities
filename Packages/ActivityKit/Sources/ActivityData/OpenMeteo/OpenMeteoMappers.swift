@@ -19,8 +19,8 @@ enum OpenMeteoMapper {
     /// Builds a `Forecast`, dropping any day whose essential fields are missing.
     ///
     /// Policy for `null` entries:
-    /// - `time`, max/min temperature, weather code → **required**; the day is skipped if absent.
-    /// - precipitation / snowfall / probability / wind → default to 0 ("no data" ≈ "none").
+    /// - date, max/min temperature, weather code → required; the day is dropped without them.
+    /// - everything else → passed through as `nil`, and the scoring leaves it out.
     ///
     /// Throws `AppError.noForecastAvailable` if no day survives, and `AppError.invalidResponse`
     /// if the arrays are not the same length (a broken contract rather than missing data).
@@ -53,11 +53,11 @@ enum OpenMeteoMapper {
                 date: date,
                 maxTemperatureC: maxTemp,
                 minTemperatureC: minTemp,
-                precipitationMM: series.precipitationSum[index] ?? 0,
-                snowfallCM: series.snowfallSum[index] ?? 0,
-                precipitationProbability: series.precipitationProbabilityMax[index] ?? 0,
-                maxWindSpeedKmh: series.windSpeedMax[index] ?? 0,
-                condition: WeatherCondition(wmoCode: code)
+                condition: WeatherCondition(wmoCode: code),
+                precipitationMM: series.precipitationSum[index],
+                snowfallCM: series.snowfallSum[index],
+                precipitationProbability: series.precipitationProbabilityMax[index],
+                maxWindSpeedKmh: series.windSpeedMax[index]
             )
         }
 

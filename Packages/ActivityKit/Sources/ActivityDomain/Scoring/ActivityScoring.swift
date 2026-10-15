@@ -45,15 +45,15 @@ public struct SkiingScorer: ActivityScoring {
         let isRaining = day.condition.isWet
             && day.condition != .snow
             && day.maxTemperatureC > Rule.rainThresholdC
-        let noRainFactor = isRaining
-            ? 1 - WeatherCurves.ratio(day.precipitationMM, saturatingAt: Rule.rainSaturationMM)
+        let noRainFactor: Double? = isRaining
+            ? day.precipitationMM.map { 1 - WeatherCurves.ratio($0, saturatingAt: Rule.rainSaturationMM) }
             : 1
 
         return WeatherCurves.combine([
             (Rule.coldWeight, WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.idealMaxTemperature, tolerance: Rule.temperatureTolerance)),
-            (Rule.snowWeight, WeatherCurves.ratio(day.snowfallCM, saturatingAt: Rule.snowfallSaturationCM)),
+            (Rule.snowWeight, day.snowfallCM.map { WeatherCurves.ratio($0, saturatingAt: Rule.snowfallSaturationCM) }),
             (Rule.noRainWeight, noRainFactor),
-            (Rule.windWeight, WeatherCurves.comfort(day.maxWindSpeedKmh, ideal: Rule.idealWind, tolerance: Rule.windTolerance)),
+            (Rule.windWeight, day.maxWindSpeedKmh.map { WeatherCurves.comfort($0, ideal: Rule.idealWind, tolerance: Rule.windTolerance) }),
         ])
     }
 }
@@ -87,7 +87,7 @@ public struct SurfingScorer: ActivityScoring {
 
         return WeatherCurves.combine([
             (Rule.temperatureWeight, WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.idealMaxTemperature, tolerance: Rule.temperatureTolerance)),
-            (Rule.windWeight, WeatherCurves.comfort(day.maxWindSpeedKmh, ideal: Rule.idealWind, tolerance: Rule.windTolerance)),
+            (Rule.windWeight, day.maxWindSpeedKmh.map { WeatherCurves.comfort($0, ideal: Rule.idealWind, tolerance: Rule.windTolerance) }),
             (Rule.dryWeight, day.dryness),
         ])
     }
@@ -116,7 +116,7 @@ public struct OutdoorSightseeingScorer: ActivityScoring {
         WeatherCurves.combine([
             (Rule.temperatureWeight, WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.idealMaxTemperature, tolerance: Rule.temperatureTolerance)),
             (Rule.dryWeight, day.dryness),
-            (Rule.windWeight, WeatherCurves.comfort(day.maxWindSpeedKmh, ideal: Rule.idealWind, tolerance: Rule.windTolerance)),
+            (Rule.windWeight, day.maxWindSpeedKmh.map { WeatherCurves.comfort($0, ideal: Rule.idealWind, tolerance: Rule.windTolerance) }),
             (Rule.skyWeight, day.condition.skyPleasantness),
         ])
     }
@@ -144,13 +144,15 @@ public struct IndoorSightseeingScorer: ActivityScoring {
     public init() {}
 
     public func score(for day: DailyWeather) -> Score {
-        let wetness = 1 - day.dryness
-        let temperatureDiscomfort = 1 - WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.tolerableMaxTemperature, tolerance: Rule.temperatureTolerance)
-        let windDiscomfort = 1 - WeatherCurves.comfort(day.maxWindSpeedKmh, ideal: Rule.tolerableWind, tolerance: Rule.windTolerance)
-        let skyDiscomfort = 1 - day.condition.skyPleasantness
-
+        let signals: [Double?] = [
+            day.dryness.map { 1 - $0 },
+            1 - WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.tolerableMaxTemperature, tolerance: Rule.temperatureTolerance),
+            day.maxWindSpeedKmh.map { 1 - WeatherCurves.comfort($0, ideal: Rule.tolerableWind, tolerance: Rule.windTolerance) },
+            1 - day.condition.skyPleasantness,
+        ]
         // Use the *worst* signal, not the average: one strong reason to stay in is enough.
-        let unpleasantness = max(wetness, temperatureDiscomfort, windDiscomfort, skyDiscomfort)
+        // A missing signal is skipped rather than read as "fine".
+        let unpleasantness = signals.compactMap { $0 }.max() ?? 0
         return Score(normalised: Rule.floor + (1 - Rule.floor) * unpleasantness)
     }
 }
@@ -158,9 +160,9 @@ public struct IndoorSightseeingScorer: ActivityScoring {
 // MARK: - Shared signals
 
 extension DailyWeather {
-    /// 1.0 when rain is impossible, 0.0 when it is certain.
-    var dryness: Double {
-        1 - Double(precipitationProbability) / 100
+    /// 1.0 when rain is impossible, 0.0 when it is certain. `nil` when the probability is missing.
+    var dryness: Double? {
+        precipitationProbability.map { 1 - Double($0) / 100 }
     }
 }
 

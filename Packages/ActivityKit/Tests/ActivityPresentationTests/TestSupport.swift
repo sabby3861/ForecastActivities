@@ -71,11 +71,11 @@ enum Fixture {
             date: Date(timeIntervalSince1970: 1_791_849_600 + Double(offset) * 86_400),
             maxTemperatureC: 21,
             minTemperatureC: 12,
+            condition: .clear,
             precipitationMM: 0,
             snowfallCM: 0,
             precipitationProbability: 5,
-            maxWindSpeedKmh: 8,
-            condition: .clear
+            maxWindSpeedKmh: 8
         )
     }
 

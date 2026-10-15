@@ -7,21 +7,21 @@ enum Fixture {
         offset: Int = 0,
         maxTemp: Double = 18,
         minTemp: Double = 10,
-        precipitationMM: Double = 0,
-        snowfallCM: Double = 0,
-        precipitationProbability: Int = 10,
-        wind: Double = 12,
+        precipitationMM: Double? = 0,
+        snowfallCM: Double? = 0,
+        precipitationProbability: Int? = 10,
+        wind: Double? = 12,
         condition: WeatherCondition = .clear
     ) -> DailyWeather {
         DailyWeather(
             date: date(offset: offset),
             maxTemperatureC: maxTemp,
             minTemperatureC: minTemp,
+            condition: condition,
             precipitationMM: precipitationMM,
             snowfallCM: snowfallCM,
             precipitationProbability: precipitationProbability,
-            maxWindSpeedKmh: wind,
-            condition: condition
+            maxWindSpeedKmh: wind
         )
     }
 

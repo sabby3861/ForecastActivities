@@ -44,6 +44,15 @@ final class WeatherCurvesTests: XCTestCase {
         XCTAssertEqual(WeatherCurves.combine([]), .min)
     }
 
+    func testCombine_dropsMissingFactorsAndRescales() {
+        let score = WeatherCurves.combine([(weight: 1, value: 1), (weight: 3, value: nil)])
+        XCTAssertEqual(score.value, 100, "the missing factor neither adds nor subtracts")
+    }
+
+    func testCombine_withEveryFactorMissing_isZero() {
+        XCTAssertEqual(WeatherCurves.combine([(weight: 1, value: nil), (weight: 2, value: nil)]), .min)
+    }
+
     // MARK: Score
 
     func testScore_clampsToRange() {

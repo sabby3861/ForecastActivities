@@ -107,7 +107,7 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
         XCTAssertEqual(gaps, Array(repeating: 1, count: 6))
     }
 
-    func testForecast_dropsDaysMissingRequiredFields_andDefaultsOptionalOnes() async throws {
+    func testForecast_dropsDaysMissingRequiredFields_andKeepsOptionalOnesAsNil() async throws {
         let http = StubHTTPClient.returning(data: Fixtures.forecastWithNulls)
         let repository = OpenMeteoForecastRepository(client: APIClient(http: http))
 
@@ -117,9 +117,9 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
         XCTAssertEqual(forecast.days.map(\.maxTemperatureC), [20.0, 22.0])
 
         let third = forecast.days[1]
-        XCTAssertEqual(third.precipitationMM, 0)
-        XCTAssertEqual(third.precipitationProbability, 0)
-        XCTAssertEqual(third.maxWindSpeedKmh, 0)
+        XCTAssertNil(third.precipitationMM, "missing values are passed on, not guessed")
+        XCTAssertNil(third.precipitationProbability)
+        XCTAssertNil(third.maxWindSpeedKmh)
     }
 
     func testForecast_withNoUsableDays_throwsNoForecastAvailable() async {

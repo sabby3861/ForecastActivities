@@ -75,7 +75,7 @@ final class ActivityScorerTests: XCTestCase {
 
     // MARK: - Outdoor sightseeing
 
-    func testOutdoor_idealDayScoresNearPerfect() {
+    func testOutdoor_idealDayScoresPerfect() {
         let score = OutdoorSightseeingScorer().score(for: Fixture.day(maxTemp: 21, minTemp: 12, precipitationProbability: 0, wind: 8, condition: .clear))
         XCTAssertEqual(score, .max)
     }
@@ -85,6 +85,13 @@ final class ActivityScorerTests: XCTestCase {
         let dry = scorer.score(for: Fixture.day(precipitationProbability: 0, condition: .clear))
         let wet = scorer.score(for: Fixture.day(precipitationProbability: 90, condition: .rain))
         XCTAssertGreaterThan(dry.value - wet.value, 30)
+    }
+
+    func testOutdoor_missingRainChance_isNotTreatedAsDry() {
+        let scorer = OutdoorSightseeingScorer()
+        let missing = scorer.score(for: Fixture.day(maxTemp: 20, minTemp: 12, precipitationProbability: nil, wind: nil, condition: .overcast))
+        let assumedDry = scorer.score(for: Fixture.day(maxTemp: 20, minTemp: 12, precipitationProbability: 0, wind: 0, condition: .overcast))
+        XCTAssertLessThan(missing, assumedDry)
     }
 
     func testOutdoor_extremeHeatIsPenalised() {

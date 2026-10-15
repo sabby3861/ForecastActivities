@@ -195,7 +195,7 @@ private struct DayForecastRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(Formatting.temperature(day.maxTemperatureC)) / \(Formatting.temperature(day.minTemperatureC))")
                     .font(.subheadline.monospacedDigit())
-                Text("Rain \(day.precipitationProbability)% · Wind \(Int(day.maxWindSpeedKmh.rounded())) km/h\(snowSuffix)")
+                Text(details)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -203,7 +203,15 @@ private struct DayForecastRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var snowSuffix: String {
-        day.snowfallCM > 0 ? " · Snow \(Int(day.snowfallCM.rounded())) cm" : ""
+    /// "Rain 20% · Wind 14 km/h · Snow 5 cm". Missing values show as "–".
+    private var details: String {
+        var parts = [
+            "Rain \(day.precipitationProbability.map { "\($0)%" } ?? "–")",
+            "Wind \(day.maxWindSpeedKmh.map { "\(Int($0.rounded())) km/h" } ?? "–")",
+        ]
+        if let snowfall = day.snowfallCM, snowfall > 0 {
+            parts.append("Snow \(Int(snowfall.rounded())) cm")
+        }
+        return parts.joined(separator: " · ")
     }
 }
