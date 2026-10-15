@@ -31,6 +31,19 @@ final class ActivityScorerTests: XCTestCase {
 
     // MARK: - Skiing
 
+    func testSkiing_withoutSnow_scoresZero() {
+        let scorer = SkiingScorer()
+        // Cold and clear, but nothing on the ground and nothing falling.
+        XCTAssertEqual(scorer.score(for: Fixture.day(maxTemp: -3, minTemp: -9, snowfallCM: 0, snowDepthM: 0)), .min)
+        XCTAssertEqual(scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 15)), .min)
+        XCTAssertEqual(scorer.score(for: Fixture.day(maxTemp: -3, minTemp: -9, snowfallCM: nil, snowDepthM: nil)), .min, "no snow data is not evidence of snow")
+    }
+
+    func testSkiing_freshSnowAloneIsEnough() {
+        let score = SkiingScorer().score(for: Fixture.day(maxTemp: -2, minTemp: -8, snowfallCM: 5, snowDepthM: 0, condition: .snow))
+        XCTAssertGreaterThan(score, .min)
+    }
+
     func testSkiing_coldPowderDayBeatsMildDayOnTheSameBase() {
         let scorer = SkiingScorer()
         let powder = scorer.score(for: Fixture.day(maxTemp: -4, minTemp: -10, snowfallCM: 12, snowDepthM: 0.8, wind: 10, condition: .snow))
@@ -57,6 +70,27 @@ final class ActivityScorerTests: XCTestCase {
 
     func testSurfing_likelyThunderstormIsZero() {
         let day = Fixture.day(maxTemp: 25, minTemp: 20, precipitationProbability: 80, wind: 10, condition: .thunderstorm, sea: .waves(heightM: 1.5))
+        XCTAssertEqual(SurfingScorer().score(for: day), .min)
+    }
+
+    func testSurfing_unlikelyThunderstormIsNotAnAutomaticZero() {
+        // The daily code is the worst hour; with a 20% chance it's a passing storm.
+        let day = Fixture.day(maxTemp: 25, minTemp: 20, precipitationProbability: 20, wind: 10, condition: .thunderstorm, sea: .waves(heightM: 1.5))
+        XCTAssertGreaterThan(SurfingScorer().score(for: day), .min)
+    }
+
+    func testSurfing_inland_isZeroEvenOnAPerfectDay() {
+        let day = Fixture.day(maxTemp: 26, minTemp: 18, precipitationProbability: 0, wind: 10, sea: .noSea)
+        XCTAssertEqual(SurfingScorer().score(for: day), .min)
+    }
+
+    func testSurfing_flatSea_isZero() {
+        let day = Fixture.day(maxTemp: 26, minTemp: 18, wind: 10, sea: .waves(heightM: 0.2))
+        XCTAssertEqual(SurfingScorer().score(for: day), .min)
+    }
+
+    func testSurfing_freezingAir_isZero() {
+        let day = Fixture.day(maxTemp: -3, minTemp: -8, wind: 10, sea: .waves(heightM: 1.5))
         XCTAssertEqual(SurfingScorer().score(for: day), .min)
     }
 
