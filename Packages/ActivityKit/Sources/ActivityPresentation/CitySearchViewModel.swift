@@ -33,12 +33,21 @@ public final class CitySearchViewModel {
         self.debounce = debounce
     }
 
-    /// Re-runs the current query, e.g. from a "Try again" button after a failure.
+    /// Re-runs the current query, e.g. from a "Try again" button after a failure. The user
+    /// tapped a button, so there's nothing to debounce: it shows `.loading` and searches now.
     public func retry() {
-        scheduleSearch()
+        search(after: nil)
     }
 
     private func scheduleSearch() {
+        search(after: debounce)
+    }
+
+    /// Cancels any search in flight and starts one for the current query.
+    ///
+    /// - Parameter delay: how long to wait for typing to pause before showing `.loading`
+    ///   and searching, or `nil` to do both straight away.
+    private func search(after delay: Duration?) {
         // Cancelling the in-flight task is what makes "latest query wins" hold: a slow
         // response for "Lon" can never overwrite the results for "London".
         searchTask?.cancel()
@@ -49,11 +58,18 @@ public final class CitySearchViewModel {
             return
         }
 
-        state = .loading
+        if delay == nil {
+            state = .loading
+        }
         searchTask = Task { [weak self] in
             guard let self else { return }
             do {
-                try await Task.sleep(for: self.debounce)
+                if let delay {
+                    try await Task.sleep(for: delay)
+                    // Only now, once typing has paused: switching earlier would replace the
+                    // current results with a spinner on every keystroke.
+                    self.state = .loading
+                }
                 let cities = try await self.repository.search(query: trimmed)
                 // The repository may have returned normally even though we were cancelled
                 // mid-flight (not every HTTPClient cooperates with cancellation).
