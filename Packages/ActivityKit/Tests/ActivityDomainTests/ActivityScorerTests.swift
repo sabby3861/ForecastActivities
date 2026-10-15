@@ -13,16 +13,20 @@ final class ActivityScorerTests: XCTestCase {
             Fixture.day(maxTemp: 50, minTemp: 40, precipitationMM: 200, snowfallCM: 100, precipitationProbability: 100, wind: 200, condition: .thunderstorm, sea: .waves(heightM: 12)),
             Fixture.day(maxTemp: 0, minTemp: 0, precipitationMM: nil, snowfallCM: nil, snowDepthM: nil, precipitationProbability: nil, wind: nil, condition: .unknown(code: 999), sea: .noSea),
         ]
-        for scorer in ActivityScorers.default {
-            for day in extremes {
+        for day in extremes {
+            for scorer in ActivityScorers.default {
                 let score = scorer.score(for: day)
                 XCTAssertTrue((0...100).contains(score.value), "\(scorer.activity) produced \(score.value)")
+            }
+            for alternative in [Score.min, .max] {
+                let score = ActivityScorers.fallback.score(for: day, bestAlternative: alternative)
+                XCTAssertTrue((50...100).contains(score.value), "indoor produced \(score.value)")
             }
         }
     }
 
     func testDefaultScorers_coverEveryActivityExactlyOnce() {
-        XCTAssertEqual(ActivityScorers.default.map(\.activity), Activity.allCases)
+        XCTAssertEqual(ActivityScorers.default.map(\.activity) + [ActivityScorers.fallback.activity], Activity.allCases)
     }
 
     // MARK: - Skiing
@@ -119,31 +123,50 @@ final class ActivityScorerTests: XCTestCase {
 
     // MARK: - Indoor sightseeing
 
+    private let miserable = Fixture.day(maxTemp: 4, minTemp: 0, precipitationProbability: 100, wind: 60, condition: .rain)
+
     func testIndoor_neverDropsBelowFifty() {
         let perfectDay = Fixture.day(maxTemp: 21, minTemp: 12, precipitationProbability: 0, wind: 5, condition: .clear)
-        XCTAssertEqual(IndoorSightseeingScorer().score(for: perfectDay).value, 50)
+        XCTAssertEqual(IndoorSightseeingScorer().score(for: perfectDay, bestAlternative: .min).value, 50)
+        XCTAssertEqual(IndoorSightseeingScorer().score(for: miserable, bestAlternative: .max).value, 50)
     }
 
-    func testIndoor_miserableWeatherScoresMaximum() {
-        let miserable = Fixture.day(maxTemp: 4, minTemp: 0, precipitationProbability: 100, wind: 60, condition: .rain)
-        XCTAssertEqual(IndoorSightseeingScorer().score(for: miserable), .max)
+    func testIndoor_miserableWeatherWithNothingElseScoresMaximum() {
+        XCTAssertEqual(IndoorSightseeingScorer().score(for: miserable, bestAlternative: .min), .max)
     }
 
     func testIndoor_usesWorstSignalNotAverage() {
         // Perfect temperature and wind, but certain rain: that alone should push indoors to 100.
         let certainRain = Fixture.day(maxTemp: 21, minTemp: 12, precipitationProbability: 100, wind: 5, condition: .clear)
-        XCTAssertEqual(IndoorSightseeingScorer().score(for: certainRain), .max)
+        XCTAssertEqual(IndoorSightseeingScorer().score(for: certainRain, bestAlternative: .min), .max)
+    }
+
+    func testIndoor_coldDayLosesToAGreatAlternative() {
+        // A powder day is cold, but that's no reason to go to a museum.
+        let powderDay = Fixture.day(maxTemp: -4, minTemp: -10, snowfallCM: 12, snowDepthM: 0.8, wind: 10, condition: .snow)
+        let skiing = SkiingScorer().score(for: powderDay)
+        XCTAssertLessThan(IndoorSightseeingScorer().score(for: powderDay, bestAlternative: skiing), skiing)
+    }
+
+    func testIndoor_unlikelyStormDoesNotMaxOut() {
+        let scorer = IndoorSightseeingScorer()
+        let passing = scorer.score(for: Fixture.day(maxTemp: 22, minTemp: 15, precipitationProbability: 20, wind: 10, condition: .thunderstorm), bestAlternative: .min)
+        let likely = scorer.score(for: Fixture.day(maxTemp: 22, minTemp: 15, precipitationProbability: 80, wind: 10, condition: .thunderstorm), bestAlternative: .min)
+        XCTAssertLessThan(passing, .max)
+        XCTAssertEqual(likely, .max)
     }
 
     // MARK: - Cross-activity sanity
 
     func testRainyColdDay_prefersIndoorOverOutdoor() {
         let day = Fixture.day(maxTemp: 6, minTemp: 2, precipitationMM: 12, precipitationProbability: 95, wind: 30, condition: .rain)
-        XCTAssertGreaterThan(IndoorSightseeingScorer().score(for: day), OutdoorSightseeingScorer().score(for: day))
+        let outdoor = OutdoorSightseeingScorer().score(for: day)
+        XCTAssertGreaterThan(IndoorSightseeingScorer().score(for: day, bestAlternative: outdoor), outdoor)
     }
 
     func testWarmClearDay_prefersOutdoorOverIndoor() {
         let day = Fixture.day(maxTemp: 22, minTemp: 14, precipitationProbability: 5, wind: 10, condition: .clear)
-        XCTAssertGreaterThan(OutdoorSightseeingScorer().score(for: day), IndoorSightseeingScorer().score(for: day))
+        let outdoor = OutdoorSightseeingScorer().score(for: day)
+        XCTAssertGreaterThan(outdoor, IndoorSightseeingScorer().score(for: day, bestAlternative: outdoor))
     }
 }

@@ -1,41 +1,52 @@
 import Foundation
 
 /// Turns a multi-day forecast into a ranked list of activity recommendations.
-///
-/// This is the single piece of business logic the app exists for, so it is a plain,
-/// synchronous, dependency-free struct: easy to test exhaustively and impossible to
-/// couple to networking or UI by accident.
 public struct RankActivitiesUseCase: Sendable {
     private let scorers: [any ActivityScoring]
+    private let fallback: IndoorSightseeingScorer?
 
-    /// - Parameter scorers: the rule set. Defaults to production rules; tests inject their own.
-    public init(scorers: [any ActivityScoring] = ActivityScorers.default) {
+    /// - Parameters:
+    ///   - scorers: the regular rule set. Defaults to production rules; tests inject their own.
+    ///   - fallback: scored per day after the others, against the best of them. `nil` to leave it out.
+    public init(
+        scorers: [any ActivityScoring] = ActivityScorers.default,
+        fallback: IndoorSightseeingScorer? = ActivityScorers.fallback
+    ) {
         self.scorers = scorers
+        self.fallback = fallback
     }
 
     /// Ranks activities for the given days.
     ///
-    /// - Returns: one recommendation per scorer, best overall first. Ordering is total and
-    ///   deterministic: by overall score descending, then by the scorer's position in the
-    ///   rule set, so equal scores never flicker between refreshes.
-    /// - Note: an empty `days` array yields an empty result rather than a list of zeros,
-    ///   because "no data" and "terrible conditions" must be distinguishable in the UI.
+    /// - Returns: one recommendation per activity, best overall first. Ties go to the
+    ///   earlier activity in the rule set (the fallback comes last), so equal scores don't
+    ///   swap places between refreshes.
+    /// - Note: no days gives an empty result rather than a list of zeros, so "no data" and
+    ///   "terrible week" stay distinguishable.
     public func rank(_ days: [DailyWeather]) -> [ActivityRecommendation] {
         guard !days.isEmpty else { return [] }
 
-        let recommendations = scorers.map { scorer -> ActivityRecommendation in
-            let daily = days.map { DailyScore(date: $0.date, score: scorer.score(for: $0)) }
+        let activities = scorers.map(\.activity) + (fallback.map { [$0.activity] } ?? [])
+
+        // One row per day, one column per activity, in `activities` order.
+        let scoresByDay: [[Score]] = days.map { day in
+            let scores = scorers.map { $0.score(for: day) }
+            guard let fallback else { return scores }
+            return scores + [fallback.score(for: day, bestAlternative: scores.max() ?? .min)]
+        }
+
+        let recommendations = activities.enumerated().map { column, activity in
+            let daily = zip(days, scoresByDay).map { day, scores in
+                DailyScore(date: day.date, score: scores[column])
+            }
             let mean = Double(daily.reduce(0) { $0 + $1.score.value }) / Double(daily.count)
             return ActivityRecommendation(
-                activity: scorer.activity,
+                activity: activity,
                 overallScore: Score(value: Int(mean.rounded())),
                 dailyScores: daily
             )
         }
 
-        // Two comparators, applied in order: best score first, then original rule-set
-        // position to break ties. Declarative, and the intent is visible without reading
-        // a comparison closure.
         return recommendations.enumerated()
             .sorted(using: [
                 KeyPathComparator(\.element.overallScore, order: .reverse),

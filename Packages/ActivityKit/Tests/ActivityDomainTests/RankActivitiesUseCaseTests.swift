@@ -28,7 +28,7 @@ final class RankActivitiesUseCaseTests: XCTestCase {
             FixedScorer(activity: .skiing, value: 10),
             FixedScorer(activity: .surfing, value: 90),
             FixedScorer(activity: .outdoorSightseeing, value: 50),
-        ])
+        ], fallback: nil)
 
         let ranked = useCase.rank([Fixture.day()])
 
@@ -41,7 +41,7 @@ final class RankActivitiesUseCaseTests: XCTestCase {
             FixedScorer(activity: .indoorSightseeing, value: 60),
             FixedScorer(activity: .skiing, value: 60),
             FixedScorer(activity: .surfing, value: 60),
-        ])
+        ], fallback: nil)
 
         let first = useCase.rank([Fixture.day()])
         let second = useCase.rank([Fixture.day()])
@@ -54,7 +54,7 @@ final class RankActivitiesUseCaseTests: XCTestCase {
         let days = (0..<3).map { Fixture.day(offset: $0) }
         let useCase = RankActivitiesUseCase(scorers: [
             DayIndexedScorer(activity: .skiing, values: [20, 40, 90]),
-        ])
+        ], fallback: nil)
 
         let ranked = useCase.rank(days)
 
@@ -68,12 +68,21 @@ final class RankActivitiesUseCaseTests: XCTestCase {
         let days = (0..<3).map { Fixture.day(offset: $0) }
         let useCase = RankActivitiesUseCase(scorers: [
             DayIndexedScorer(activity: .surfing, values: [70, 90, 90]),
-        ])
+        ], fallback: nil)
 
         let best = useCase.rank(days)[0].bestDay
 
         XCTAssertEqual(best?.score.value, 90)
         XCTAssertEqual(best?.date, Fixture.date(offset: 1))
+    }
+
+    func testFallback_isScoredAgainstTheBestOtherActivityThatDay() {
+        let useCase = RankActivitiesUseCase(scorers: [FixedScorer(activity: .outdoorSightseeing, value: 100)])
+        let miserable = Fixture.day(maxTemp: 4, minTemp: 0, precipitationProbability: 100, wind: 60, condition: .rain)
+
+        let indoor = useCase.rank([miserable]).first { $0.activity == .indoorSightseeing }
+
+        XCTAssertEqual(indoor?.overallScore.value, 50, "something perfect is on offer, so indoor drops to its floor")
     }
 
     func testProductionRules_rankRainyColdWeekIndoorFirst() {

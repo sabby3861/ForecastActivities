@@ -165,16 +165,17 @@ public struct OutdoorSightseeingScorer: ActivityScoring {
 
 // MARK: - Indoor sightseeing
 
-/// Indoor sightseeing is the fallback: it is never a *bad* idea, and it becomes the *best*
-/// idea precisely when the weather makes everything else unpleasant.
+/// Indoor sightseeing is the fallback. It's never a bad idea, and it's the best one when
+/// the weather is bad *and* nothing else is worth doing. Cold alone shouldn't send you to a
+/// museum on a powder day, so it also looks at the best other activity that day.
 ///
-/// Score = floor + (1 − floor) × (how unpleasant it is outside). The floor is a deliberate
-/// product decision: a museum is always a reasonable plan, so this activity never ranks at zero.
-public struct IndoorSightseeingScorer: ActivityScoring {
+/// Score = floor + (1 − floor) × unpleasantness × (1 − best alternative). Unpleasantness is
+/// the worst signal outside, not the average: one strong reason to stay in is enough.
+public struct IndoorSightseeingScorer: Sendable {
     enum Rule {
-        /// The minimum score, as a 0…1 fraction. 0.5 → never below 50.
+        /// Never below 50.
         static let floor: Double = 0.5
-        /// Wider than the outdoor range: you only *retreat* indoors for genuinely bad weather.
+        /// Wider than the outdoor range: you only retreat indoors for genuinely bad weather.
         static let tolerableMaxTemperature: ClosedRange<Double> = 10...28
         static let temperatureTolerance: Double = 12
         static let tolerableWind: ClosedRange<Double> = 0...30
@@ -184,17 +185,16 @@ public struct IndoorSightseeingScorer: ActivityScoring {
     public let activity = Activity.indoorSightseeing
     public init() {}
 
-    public func score(for day: DailyWeather) -> Score {
+    public func score(for day: DailyWeather, bestAlternative: Score) -> Score {
         let signals: [Double?] = [
             day.dryness.map { 1 - $0 },
             1 - WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.tolerableMaxTemperature, tolerance: Rule.temperatureTolerance),
             day.maxWindSpeedKmh.map { 1 - WeatherCurves.comfort($0, ideal: Rule.tolerableWind, tolerance: Rule.windTolerance) },
             1 - day.effectiveCondition.skyPleasantness,
         ]
-        // Use the *worst* signal, not the average: one strong reason to stay in is enough.
-        // A missing signal is skipped rather than read as "fine".
         let unpleasantness = signals.compactMap { $0 }.max() ?? 0
-        return Score(normalised: Rule.floor + (1 - Rule.floor) * unpleasantness)
+        let nothingBetter = 1 - Double(bestAlternative.value) / 100
+        return Score(normalised: Rule.floor + (1 - Rule.floor) * unpleasantness * nothingBetter)
     }
 }
 
@@ -223,8 +223,7 @@ extension DailyWeather {
 }
 
 extension WeatherCondition {
-    /// How pleasant the sky is to be out under, 0…1. Shared by every scorer that cares
-    /// about the sky so the activities agree on what "nice" means.
+    /// How pleasant the sky is to be out under, 0…1. Shared so the activities agree.
     var skyPleasantness: Double {
         switch self {
         case .clear: return 1.0
@@ -240,12 +239,14 @@ extension WeatherCondition {
     }
 }
 
-/// The production rule set, in ranking tie-break order.
+/// The production rule set, in ranking tie-break order. The fallback is scored last,
+/// once the others are known.
 public enum ActivityScorers {
     public static let `default`: [any ActivityScoring] = [
         SkiingScorer(),
         SurfingScorer(),
         OutdoorSightseeingScorer(),
-        IndoorSightseeingScorer(),
     ]
+
+    public static let fallback = IndoorSightseeingScorer()
 }
