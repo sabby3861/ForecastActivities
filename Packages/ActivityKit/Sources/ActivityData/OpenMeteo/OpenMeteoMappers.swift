@@ -16,15 +16,15 @@ enum OpenMeteoMapper {
         )
     }
 
-    /// Builds a `Forecast`, dropping any day whose essential fields are missing.
+    /// Builds a `Forecast` from the forecast response and, if we got one, the marine response.
     ///
     /// Policy for `null` entries:
     /// - date, max/min temperature, weather code → required; the day is dropped without them.
     /// - everything else → passed through as `nil`, and the scoring leaves it out.
     ///
     /// Throws `AppError.noForecastAvailable` if no day survives, and `AppError.invalidResponse`
-    /// if the arrays are not the same length (a broken contract rather than missing data).
-    static func forecast(from dto: ForecastResponseDTO, for city: City) throws -> Forecast {
+    /// if the forecast arrays have different lengths.
+    static func forecast(from dto: ForecastResponseDTO, marine: MarineResponseDTO?, for city: City) throws -> Forecast {
         let timeZone = TimeZone(identifier: dto.timezone) ?? .gmt
         let series = dto.daily
         let count = series.time.count
@@ -39,10 +39,12 @@ enum OpenMeteoMapper {
         }
 
         let parser = DayParser(timeZone: timeZone)
+        let sea = SeaLookup(marine)
 
         let days: [DailyWeather] = (0..<count).compactMap { index in
+            let day = series.time[index]
             guard
-                let date = parser.date(from: series.time[index]),
+                let date = parser.date(from: day),
                 let maxTemp = series.temperatureMax[index],
                 let minTemp = series.temperatureMin[index],
                 let code = series.weatherCode[index]
@@ -58,7 +60,8 @@ enum OpenMeteoMapper {
                 snowfallCM: series.snowfallSum[index],
                 snowDepthM: series.snowDepthMax[index],
                 precipitationProbability: series.precipitationProbabilityMax[index],
-                maxWindSpeedKmh: series.windSpeedMax[index]
+                maxWindSpeedKmh: series.windSpeedMax[index],
+                sea: sea.state(on: day)
             )
         }
 
@@ -66,6 +69,41 @@ enum OpenMeteoMapper {
             throw AppError.noForecastAvailable
         }
         return Forecast(city: city, timeZone: timeZone, days: days)
+    }
+}
+
+/// Turns the marine response into a `SeaState` per forecast day, matched on the date string.
+///
+/// - No response (the request failed) or a malformed one → `.unknown` for every day.
+/// - Every wave value `null` → the point is inland → `.noSea` for every day.
+/// - Otherwise → `.waves` where there's a value, `.unknown` where there isn't.
+private struct SeaLookup {
+    private enum Kind {
+        case unknown
+        case inland
+        case coastal([String: Double])
+    }
+
+    private let kind: Kind
+
+    init(_ dto: MarineResponseDTO?) {
+        guard let series = dto?.daily, series.time.count == series.waveHeightMax.count else {
+            kind = .unknown
+            return
+        }
+        var heights: [String: Double] = [:]
+        for (day, height) in zip(series.time, series.waveHeightMax) {
+            if let height { heights[day] = height }
+        }
+        kind = heights.isEmpty ? .inland : .coastal(heights)
+    }
+
+    func state(on day: String) -> SeaState {
+        switch kind {
+        case .unknown: return .unknown
+        case .inland: return .noSea
+        case .coastal(let heights): return heights[day].map { .waves(heightM: $0) } ?? .unknown
+        }
     }
 }
 

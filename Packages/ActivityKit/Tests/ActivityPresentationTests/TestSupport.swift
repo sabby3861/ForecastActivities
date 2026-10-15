@@ -66,7 +66,7 @@ enum Fixture {
 
     static let paris = City(id: 2, name: "Paris", country: "France", coordinate: Coordinate(latitude: 48.85, longitude: 2.35))
 
-    static func day(offset: Int) -> DailyWeather {
+    static func day(offset: Int, sea: SeaState = .noSea) -> DailyWeather {
         DailyWeather(
             date: Date(timeIntervalSince1970: 1_791_849_600 + Double(offset) * 86_400),
             maxTemperatureC: 21,
@@ -76,14 +76,15 @@ enum Fixture {
             snowfallCM: 0,
             snowDepthM: 0,
             precipitationProbability: 5,
-            maxWindSpeedKmh: 8
+            maxWindSpeedKmh: 8,
+            sea: sea
         )
     }
 
     static let forecast = Forecast(
         city: london,
         timeZone: TimeZone(identifier: "Europe/London")!,
-        days: (0..<7).map(day(offset:))
+        days: (0..<7).map { day(offset: $0) }
     )
 }
 

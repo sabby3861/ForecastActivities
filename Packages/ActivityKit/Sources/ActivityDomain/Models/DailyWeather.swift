@@ -42,6 +42,16 @@ public enum WeatherCondition: Hashable, Sendable {
     }
 }
 
+/// What the sea is doing near the location on a given day.
+public enum SeaState: Hashable, Sendable {
+    /// Coastal, with a wave forecast for the day.
+    case waves(heightM: Double)
+    /// The marine model has no sea cell here, so the location is inland.
+    case noSea
+    /// We couldn't get marine data, so we don't know.
+    case unknown
+}
+
 /// One day of forecast, in the units the scoring rules use.
 ///
 /// Date, temperatures and weather code are required; the mapper drops a day without them.
@@ -63,6 +73,7 @@ public struct DailyWeather: Identifiable, Hashable, Sendable {
     public let precipitationProbability: Int?
     /// Maximum 10 m wind speed in km/h.
     public let maxWindSpeedKmh: Double?
+    public let sea: SeaState
 
     public var id: Date { date }
 
@@ -75,7 +86,8 @@ public struct DailyWeather: Identifiable, Hashable, Sendable {
         snowfallCM: Double?,
         snowDepthM: Double?,
         precipitationProbability: Int?,
-        maxWindSpeedKmh: Double?
+        maxWindSpeedKmh: Double?,
+        sea: SeaState
     ) {
         self.date = date
         self.maxTemperatureC = maxTemperatureC
@@ -86,6 +98,7 @@ public struct DailyWeather: Identifiable, Hashable, Sendable {
         self.snowDepthM = snowDepthM
         self.precipitationProbability = precipitationProbability.map { min(max($0, 0), 100) }
         self.maxWindSpeedKmh = maxWindSpeedKmh
+        self.sea = sea
     }
 }
 

@@ -1,13 +1,14 @@
 import ActivityDomain
 import Foundation
 
-/// Builds the two Open-Meteo requests the app needs.
+/// Builds the three Open-Meteo requests the app needs: city search, forecast and marine.
 ///
 /// Base URLs are injectable so tests (and a future staging/proxy setup) can point elsewhere
 /// without touching the request-building logic.
 public struct OpenMeteoEndpoints: Sendable {
     public static let productionGeocodingBase = URL(string: "https://geocoding-api.open-meteo.com")!
     public static let productionForecastBase = URL(string: "https://api.open-meteo.com")!
+    public static let productionMarineBase = URL(string: "https://marine-api.open-meteo.com")!
 
     /// The daily variables the scoring rules consume. Declared once so the request and the
     /// DTO cannot drift apart silently.
@@ -22,17 +23,22 @@ public struct OpenMeteoEndpoints: Sendable {
         "snow_depth_max",
     ]
 
+    public static let marineDailyVariables = ["wave_height_max"]
+
     public static let forecastDays = 7
 
     private let geocodingBase: URL
     private let forecastBase: URL
+    private let marineBase: URL
 
     public init(
         geocodingBase: URL = OpenMeteoEndpoints.productionGeocodingBase,
-        forecastBase: URL = OpenMeteoEndpoints.productionForecastBase
+        forecastBase: URL = OpenMeteoEndpoints.productionForecastBase,
+        marineBase: URL = OpenMeteoEndpoints.productionMarineBase
     ) {
         self.geocodingBase = geocodingBase
         self.forecastBase = forecastBase
+        self.marineBase = marineBase
     }
 
     /// `GET /v1/search?name=…&count=10&language=en&format=json`
@@ -59,6 +65,19 @@ public struct OpenMeteoEndpoints: Sendable {
             URLQueryItem(name: "wind_speed_unit", value: "kmh"),
             URLQueryItem(name: "temperature_unit", value: "celsius"),
             URLQueryItem(name: "precipitation_unit", value: "mm"),
+        ])
+    }
+
+    /// `GET /v1/marine?latitude=…&longitude=…&daily=wave_height_max&timezone=auto&forecast_days=7`
+    ///
+    /// Same coordinate, zone and window as the forecast, so the days line up by date string.
+    public func marine(for coordinate: Coordinate) -> URLRequest {
+        Self.request(base: marineBase, path: "v1/marine", queryItems: [
+            URLQueryItem(name: "latitude", value: Self.format(coordinate.latitude)),
+            URLQueryItem(name: "longitude", value: Self.format(coordinate.longitude)),
+            URLQueryItem(name: "daily", value: Self.marineDailyVariables.joined(separator: ",")),
+            URLQueryItem(name: "timezone", value: "auto"),
+            URLQueryItem(name: "forecast_days", value: String(Self.forecastDays)),
         ])
     }
 

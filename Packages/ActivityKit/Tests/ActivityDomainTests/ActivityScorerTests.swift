@@ -9,9 +9,9 @@ final class ActivityScorerTests: XCTestCase {
 
     func testAllScorers_alwaysProduceScoresWithinRange() {
         let extremes: [DailyWeather] = [
-            Fixture.day(maxTemp: -40, minTemp: -50, precipitationMM: 0, snowfallCM: 0, precipitationProbability: 0, wind: 0, condition: .clear),
-            Fixture.day(maxTemp: 50, minTemp: 40, precipitationMM: 200, snowfallCM: 100, precipitationProbability: 100, wind: 200, condition: .thunderstorm),
-            Fixture.day(maxTemp: 0, minTemp: 0, precipitationMM: 0, snowfallCM: 0, precipitationProbability: 0, wind: 0, condition: .unknown(code: 999)),
+            Fixture.day(maxTemp: -40, minTemp: -50, snowDepthM: 5, precipitationProbability: 0, wind: 0, condition: .clear),
+            Fixture.day(maxTemp: 50, minTemp: 40, precipitationMM: 200, snowfallCM: 100, precipitationProbability: 100, wind: 200, condition: .thunderstorm, sea: .waves(heightM: 12)),
+            Fixture.day(maxTemp: 0, minTemp: 0, precipitationMM: nil, snowfallCM: nil, snowDepthM: nil, precipitationProbability: nil, wind: nil, condition: .unknown(code: 999), sea: .noSea),
         ]
         for scorer in ActivityScorers.default {
             for day in extremes {
@@ -52,11 +52,26 @@ final class ActivityScorerTests: XCTestCase {
     // MARK: - Surfing
 
     func testSurfing_likelyThunderstormIsZero() {
-        let day = Fixture.day(maxTemp: 25, minTemp: 20, precipitationProbability: 80, wind: 10, condition: .thunderstorm)
+        let day = Fixture.day(maxTemp: 25, minTemp: 20, precipitationProbability: 80, wind: 10, condition: .thunderstorm, sea: .waves(heightM: 1.5))
         XCTAssertEqual(SurfingScorer().score(for: day), .min)
     }
 
-    func testSurfing_moderateBreezeBeatsCalmAndGale() {
+    func testSurfing_goodWavesBeatSmallWaves() {
+        let scorer = SurfingScorer()
+        let good = scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 18, wind: 10, sea: .waves(heightM: 1.6)))
+        let small = scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 18, wind: 10, sea: .waves(heightM: 0.5)))
+        XCTAssertGreaterThan(good, small)
+    }
+
+    func testSurfing_withWaveData_lightWindBeatsStrongWind() {
+        let scorer = SurfingScorer()
+        let light = scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 18, wind: 8, sea: .waves(heightM: 1.6)))
+        let strong = scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 18, wind: 45, sea: .waves(heightM: 1.6)))
+        XCTAssertGreaterThan(light, strong)
+    }
+
+    func testSurfing_withoutWaveData_moderateBreezeBeatsCalmAndGale() {
+        // Fallback path: wind stands in for swell.
         let scorer = SurfingScorer()
         let breeze = scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 18, wind: 22))
         let calm = scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 18, wind: 0))
@@ -68,8 +83,8 @@ final class ActivityScorerTests: XCTestCase {
     func testSurfing_coldDayScoresLowerThanWarmDay() {
         let scorer = SurfingScorer()
         XCTAssertLessThan(
-            scorer.score(for: Fixture.day(maxTemp: 6, minTemp: 1, wind: 22)),
-            scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 18, wind: 22))
+            scorer.score(for: Fixture.day(maxTemp: 8, minTemp: 3, wind: 10, sea: .waves(heightM: 1.6))),
+            scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 18, wind: 10, sea: .waves(heightM: 1.6)))
         )
     }
 

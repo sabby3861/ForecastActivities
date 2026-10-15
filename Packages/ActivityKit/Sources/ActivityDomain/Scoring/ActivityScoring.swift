@@ -2,7 +2,7 @@ import Foundation
 
 /// One rule object per activity: a pure function from one day's weather to a score.
 ///
-/// Each scorer checks its hard requirements first (no snow, no skiing). If one fails, the
+/// Each scorer checks its hard requirements first (no sea, no surfing). If one fails, the
 /// score is 0 and the weights never run. Otherwise the score is a weighted blend of 0…1
 /// factors, and a factor whose input is missing is left out of the blend.
 public protocol ActivityScoring: Sendable {
@@ -68,23 +68,38 @@ public struct SkiingScorer: ActivityScoring {
 
 // MARK: - Surfing
 
-/// Surfing needs air that isn't freezing and no likely thunderstorm. Given that, it wants
-/// warm air, a steady breeze (wind builds swell; too much blows it out) and a dry day.
+/// Surfing needs the sea, some waves, air that isn't freezing and no likely thunderstorm.
+/// Given that, it wants waist- to overhead-high waves, light wind, warmth and a dry day.
 ///
-/// Known limitation: wave height / swell period live in Open-Meteo's separate Marine API,
-/// which is out of scope here. Wind speed is used as a proxy. See README → Assumptions.
+/// If marine data couldn't be fetched (`SeaState.unknown`), wind stands in for swell, as
+/// a rough estimate. The ranking screen says so when that happens.
 public struct SurfingScorer: ActivityScoring {
     enum Rule {
         static let minMaxTemperatureC: Double = 5
+        /// Below this the sea is flat.
+        static let minWaveHeightM: Double = 0.3
+        static let idealWaveHeight: ClosedRange<Double> = 1.0...2.5
+        static let waveTolerance: Double = 1.0
+        /// Light wind keeps the surface clean; strong wind chops it up.
+        static let idealWind: ClosedRange<Double> = 0...20
+        static let windTolerance: Double = 25
         static let idealMaxTemperature: ClosedRange<Double> = 18...30
         static let temperatureTolerance: Double = 10
-        /// Enough wind to raise a swell, not so much that the sea is "blown out".
-        static let idealWind: ClosedRange<Double> = 12...35
-        static let windTolerance: Double = 25
 
-        static let temperatureWeight: Double = 35
-        static let windWeight: Double = 35
-        static let dryWeight: Double = 30
+        static let waveWeight: Double = 45
+        static let windWeight: Double = 20
+        static let temperatureWeight: Double = 20
+        static let dryWeight: Double = 15
+
+        /// Fallback when wave data is missing: a breeze builds swell, a gale blows it out.
+        enum WindProxy {
+            static let idealWind: ClosedRange<Double> = 12...35
+            static let windTolerance: Double = 25
+
+            static let temperatureWeight: Double = 35
+            static let windWeight: Double = 35
+            static let dryWeight: Double = 30
+        }
     }
 
     public let activity = Activity.surfing
@@ -94,11 +109,28 @@ public struct SurfingScorer: ActivityScoring {
         // Lightning on open water is a hard no.
         guard !day.isStormLikely, day.maxTemperatureC >= Rule.minMaxTemperatureC else { return .min }
 
-        return WeatherCurves.combine([
-            (Rule.temperatureWeight, WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.idealMaxTemperature, tolerance: Rule.temperatureTolerance)),
-            (Rule.windWeight, day.maxWindSpeedKmh.map { WeatherCurves.comfort($0, ideal: Rule.idealWind, tolerance: Rule.windTolerance) }),
-            (Rule.dryWeight, day.dryness),
-        ])
+        let temperature = WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.idealMaxTemperature, tolerance: Rule.temperatureTolerance)
+
+        switch day.sea {
+        case .noSea:
+            return .min
+
+        case .waves(let height):
+            guard height >= Rule.minWaveHeightM else { return .min }
+            return WeatherCurves.combine([
+                (Rule.waveWeight, WeatherCurves.comfort(height, ideal: Rule.idealWaveHeight, tolerance: Rule.waveTolerance)),
+                (Rule.windWeight, day.maxWindSpeedKmh.map { WeatherCurves.comfort($0, ideal: Rule.idealWind, tolerance: Rule.windTolerance) }),
+                (Rule.temperatureWeight, temperature),
+                (Rule.dryWeight, day.dryness),
+            ])
+
+        case .unknown:
+            return WeatherCurves.combine([
+                (Rule.WindProxy.temperatureWeight, temperature),
+                (Rule.WindProxy.windWeight, day.maxWindSpeedKmh.map { WeatherCurves.comfort($0, ideal: Rule.WindProxy.idealWind, tolerance: Rule.WindProxy.windTolerance) }),
+                (Rule.WindProxy.dryWeight, day.dryness),
+            ])
+        }
     }
 }
 

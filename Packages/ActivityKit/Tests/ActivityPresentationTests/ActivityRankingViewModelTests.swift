@@ -95,6 +95,18 @@ final class ActivityRankingViewModelTests: XCTestCase {
         XCTAssertNotNil(sut.state.value)
     }
 
+    func testSurfingIsEstimated_onlyWhenWaveDataIsMissing() {
+        let inland = ActivityRanking(forecast: Fixture.forecast, recommendations: [])
+        XCTAssertFalse(inland.surfingIsEstimated)
+
+        let oneDayMissing = Forecast(
+            city: Fixture.london,
+            timeZone: Fixture.forecast.timeZone,
+            days: [Fixture.day(offset: 0, sea: .waves(heightM: 1.2)), Fixture.day(offset: 1, sea: .unknown)]
+        )
+        XCTAssertTrue(ActivityRanking(forecast: oneDayMissing, recommendations: []).surfingIsEstimated)
+    }
+
     func testCancelledError_doesNotChangeState() async {
         let sut = ActivityRankingViewModel(city: Fixture.london, repository: StubForecastRepository.failing(.cancelled))
 

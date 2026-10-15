@@ -111,4 +111,28 @@ enum Fixtures {
       }
     }
     """.utf8)
+
+    // MARK: - Marine
+
+    /// Same days as `forecastSevenDays`. Day 3 has no value, which should come out as unknown.
+    static let marineCoastal = Data("""
+    {
+      "timezone": "Europe/London",
+      "daily": {
+        "time": ["2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],
+        "wave_height_max": [1.2, 1.6, null, 0.8, 0.6, 1.0, 2.4]
+      }
+    }
+    """.utf8)
+
+    /// What the Marine API returns for an inland point: the days, but every value null.
+    static let marineInland = Data("""
+    {
+      "timezone": "Europe/London",
+      "daily": {
+        "time": ["2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],
+        "wave_height_max": [null, null, null, null, null, null, null]
+      }
+    }
+    """.utf8)
 }

@@ -11,6 +11,12 @@ public struct ActivityRanking: Equatable, Sendable {
         self.forecast = forecast
         self.recommendations = recommendations
     }
+
+    /// True when wave data was missing for at least one day, so surfing fell back to the
+    /// wind-based estimate. The screen shows a note when this is set.
+    public var surfingIsEstimated: Bool {
+        forecast.days.contains { $0.sea == .unknown }
+    }
 }
 
 /// Drives the activity ranking screen for one city.

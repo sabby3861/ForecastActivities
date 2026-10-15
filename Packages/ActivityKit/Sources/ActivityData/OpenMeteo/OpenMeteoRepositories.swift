@@ -22,7 +22,7 @@ public struct OpenMeteoCitySearchRepository: CitySearchRepository {
     }
 }
 
-/// `ForecastRepository` backed by the Open-Meteo Forecast API.
+/// `ForecastRepository` backed by the Open-Meteo Forecast API, plus the Marine API for wave height.
 public struct OpenMeteoForecastRepository: ForecastRepository {
     private let client: APIClient
     private let endpoints: OpenMeteoEndpoints
@@ -32,8 +32,22 @@ public struct OpenMeteoForecastRepository: ForecastRepository {
         self.endpoints = endpoints
     }
 
+    /// Fetches the forecast and the marine data at the same time.
     public func forecast(for city: City) async throws -> Forecast {
+        async let marineResponse = marine(for: city.coordinate)
         let response: ForecastResponseDTO = try await client.get(endpoints.forecast(for: city.coordinate))
-        return try OpenMeteoMapper.forecast(from: response, for: city)
+        return try OpenMeteoMapper.forecast(from: response, marine: await marineResponse, for: city)
+    }
+
+    /// Marine data only affects surfing, so if it fails we carry on without it (`nil`)
+    /// instead of failing the whole screen. Cancellation still propagates.
+    private func marine(for coordinate: Coordinate) async throws -> MarineResponseDTO? {
+        do {
+            return try await client.get(endpoints.marine(for: coordinate))
+        } catch AppError.cancelled {
+            throw AppError.cancelled
+        } catch {
+            return nil
+        }
     }
 }

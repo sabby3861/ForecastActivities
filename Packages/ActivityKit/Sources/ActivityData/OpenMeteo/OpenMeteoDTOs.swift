@@ -54,3 +54,21 @@ struct DailySeriesDTO: Decodable, Sendable {
         case snowDepthMax = "snow_depth_max"
     }
 }
+
+// MARK: - Marine API
+
+/// Shape of `GET marine-api.open-meteo.com/v1/marine`. Inland points come back with every
+/// wave value `null`.
+struct MarineResponseDTO: Decodable, Sendable {
+    let daily: MarineSeriesDTO
+}
+
+struct MarineSeriesDTO: Decodable, Sendable {
+    let time: [String]
+    let waveHeightMax: [Double?]
+
+    enum CodingKeys: String, CodingKey, CaseIterable {
+        case time
+        case waveHeightMax = "wave_height_max"
+    }
+}

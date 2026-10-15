@@ -59,7 +59,12 @@ private struct RankingList: View {
             } header: {
                 Text("Best activities · \(Formatting.dateRange(ranking.forecast.days.map(\.date), in: timeZone))")
             } footer: {
-                Text("Scores are 0–100 and based on temperature, precipitation, wind and sky conditions. Indoor sightseeing never drops below 50 — it is always a reasonable fallback.")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Scores are 0–100. Skiing needs snow and surfing needs the sea, otherwise they score 0. Indoor sightseeing never drops below 50, since it's always a reasonable fallback.")
+                    if ranking.surfingIsEstimated {
+                        Text("Wave data wasn't available, so surfing is estimated from the wind.")
+                    }
+                }
             }
 
             Section("7-day forecast") {
@@ -203,12 +208,15 @@ private struct DayForecastRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// "Rain 20% · Wind 14 km/h · Snow 5 cm". Missing values show as "–".
+    /// "Rain 20% · Wind 14 km/h · Waves 1.2 m · Snow 5 cm". Missing values show as "–".
     private var details: String {
         var parts = [
             "Rain \(day.precipitationProbability.map { "\($0)%" } ?? "–")",
             "Wind \(day.maxWindSpeedKmh.map { "\(Int($0.rounded())) km/h" } ?? "–")",
         ]
+        if case .waves(let height) = day.sea {
+            parts.append("Waves \(height.formatted(.number.precision(.fractionLength(1)))) m")
+        }
         if let snowfall = day.snowfallCM, snowfall > 0 {
             parts.append("Snow \(Int(snowfall.rounded())) cm")
         }

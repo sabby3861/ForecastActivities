@@ -12,7 +12,9 @@ enum Fixture {
         snowDepthM: Double? = 0,
         precipitationProbability: Int? = 10,
         wind: Double? = 12,
-        condition: WeatherCondition = .clear
+        condition: WeatherCondition = .clear,
+        // `.unknown` keeps surfing on the wind-based fallback unless a test says otherwise.
+        sea: SeaState = .unknown
     ) -> DailyWeather {
         DailyWeather(
             date: date(offset: offset),
@@ -23,7 +25,8 @@ enum Fixture {
             snowfallCM: snowfallCM,
             snowDepthM: snowDepthM,
             precipitationProbability: precipitationProbability,
-            maxWindSpeedKmh: wind
+            maxWindSpeedKmh: wind,
+            sea: sea
         )
     }
 

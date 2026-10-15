@@ -63,9 +63,22 @@ final class OpenMeteoCitySearchRepositoryTests: XCTestCase {
 }
 
 final class OpenMeteoForecastRepositoryTests: XCTestCase {
+    private static let forecastHost = "api.open-meteo.com"
+    private static let marineHost = "marine-api.open-meteo.com"
+
+    /// The repository sends both requests at once, so the stub answers by host.
+    private func stub(
+        forecast: Data,
+        marine: StubHTTPClient.Scripted = .response(HTTPResponse(statusCode: 200, data: Fixtures.marineCoastal))
+    ) -> StubHTTPClient {
+        StubHTTPClient(routes: [
+            Self.forecastHost: .response(HTTPResponse(statusCode: 200, data: forecast)),
+            Self.marineHost: marine,
+        ])
+    }
+
     func testForecast_mapsSevenDays() async throws {
-        let http = StubHTTPClient.returning(data: Fixtures.forecastSevenDays)
-        let repository = OpenMeteoForecastRepository(client: APIClient(http: http))
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: stub(forecast: Fixtures.forecastSevenDays)))
 
         let forecast = try await repository.forecast(for: Fixtures.city)
 
@@ -87,8 +100,7 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
     }
 
     func testForecast_datesAreLocalMidnightInTheLocationTimeZone() async throws {
-        let http = StubHTTPClient.returning(data: Fixtures.forecastSevenDays)
-        let repository = OpenMeteoForecastRepository(client: APIClient(http: http))
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: stub(forecast: Fixtures.forecastSevenDays)))
 
         let forecast = try await repository.forecast(for: Fixtures.city)
 
@@ -109,8 +121,7 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
     }
 
     func testForecast_dropsDaysMissingRequiredFields_andKeepsOptionalOnesAsNil() async throws {
-        let http = StubHTTPClient.returning(data: Fixtures.forecastWithNulls)
-        let repository = OpenMeteoForecastRepository(client: APIClient(http: http))
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: stub(forecast: Fixtures.forecastWithNulls)))
 
         let forecast = try await repository.forecast(for: Fixtures.city)
 
@@ -125,9 +136,7 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
     }
 
     func testForecast_withNoUsableDays_throwsNoForecastAvailable() async {
-        let repository = OpenMeteoForecastRepository(
-            client: APIClient(http: StubHTTPClient.returning(data: Fixtures.forecastAllNull))
-        )
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: stub(forecast: Fixtures.forecastAllNull)))
 
         do {
             _ = try await repository.forecast(for: Fixtures.city)
@@ -138,9 +147,7 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
     }
 
     func testForecast_withMismatchedArrayLengths_throwsInvalidResponse() async {
-        let repository = OpenMeteoForecastRepository(
-            client: APIClient(http: StubHTTPClient.returning(data: Fixtures.forecastMismatchedLengths))
-        )
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: stub(forecast: Fixtures.forecastMismatchedLengths)))
 
         do {
             _ = try await repository.forecast(for: Fixtures.city)
@@ -150,16 +157,84 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
         }
     }
 
-    func testForecast_sendsCityCoordinates() async throws {
-        let http = StubHTTPClient.returning(data: Fixtures.forecastSevenDays)
+    func testForecast_sendsCityCoordinatesToBothEndpoints() async throws {
+        let http = stub(forecast: Fixtures.forecastSevenDays)
         let repository = OpenMeteoForecastRepository(client: APIClient(http: http))
 
         _ = try await repository.forecast(for: Fixtures.city)
 
-        let sentURL = await http.lastRequest?.url
-        let url = try XCTUnwrap(sentURL)
-        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        XCTAssertEqual(items.first { $0.name == "latitude" }?.value, "51.5085")
-        XCTAssertEqual(items.first { $0.name == "longitude" }?.value, "-0.1257")
+        for host in [Self.forecastHost, Self.marineHost] {
+            let sent = await http.requests(toHost: host)
+            XCTAssertEqual(sent.count, 1, "one request to \(host)")
+            let url = try XCTUnwrap(sent.first?.url)
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            XCTAssertEqual(items.first { $0.name == "latitude" }?.value, "51.5085")
+            XCTAssertEqual(items.first { $0.name == "longitude" }?.value, "-0.1257")
+        }
+    }
+
+    // MARK: - Marine data
+
+    func testCoastalMarineData_isMatchedToForecastDaysByDate() async throws {
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: stub(forecast: Fixtures.forecastSevenDays)))
+
+        let forecast = try await repository.forecast(for: Fixtures.city)
+
+        XCTAssertEqual(forecast.days[0].sea, .waves(heightM: 1.2))
+        XCTAssertEqual(forecast.days[1].sea, .waves(heightM: 1.6))
+        XCTAssertEqual(forecast.days[2].sea, .unknown, "a null on a coastal day means no data, not no sea")
+        XCTAssertEqual(forecast.days[6].sea, .waves(heightM: 2.4))
+    }
+
+    func testInlandMarineData_marksEveryDayAsNoSea() async throws {
+        let http = stub(forecast: Fixtures.forecastSevenDays, marine: .response(HTTPResponse(statusCode: 200, data: Fixtures.marineInland)))
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: http))
+
+        let forecast = try await repository.forecast(for: Fixtures.city)
+
+        XCTAssertEqual(Set(forecast.days.map(\.sea)), [.noSea])
+    }
+
+    func testMarineFailure_stillLoadsTheForecast_withSeaUnknown() async throws {
+        let failures: [StubHTTPClient.Scripted] = [
+            .response(HTTPResponse(statusCode: 503, data: Data())),
+            .response(HTTPResponse(statusCode: 200, data: Data("not json".utf8))),
+            .failure(URLError(.notConnectedToInternet)),
+        ]
+        for failure in failures {
+            let repository = OpenMeteoForecastRepository(client: APIClient(http: stub(forecast: Fixtures.forecastSevenDays, marine: failure)))
+
+            let forecast = try await repository.forecast(for: Fixtures.city)
+
+            XCTAssertEqual(forecast.days.count, 7)
+            XCTAssertEqual(Set(forecast.days.map(\.sea)), [.unknown], "marine failure \(failure) should degrade, not fail")
+        }
+    }
+
+    func testMarineCancellation_isNotSwallowed() async {
+        let http = stub(forecast: Fixtures.forecastSevenDays, marine: .failure(URLError(.cancelled)))
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: http))
+
+        do {
+            _ = try await repository.forecast(for: Fixtures.city)
+            XCTFail("expected cancellation to propagate")
+        } catch {
+            XCTAssertEqual(error as? AppError, .cancelled)
+        }
+    }
+
+    func testForecastFailure_failsEvenWhenMarineSucceeds() async {
+        let http = StubHTTPClient(routes: [
+            Self.forecastHost: .response(HTTPResponse(statusCode: 500, data: Data())),
+            Self.marineHost: .response(HTTPResponse(statusCode: 200, data: Fixtures.marineCoastal)),
+        ])
+        let repository = OpenMeteoForecastRepository(client: APIClient(http: http))
+
+        do {
+            _ = try await repository.forecast(for: Fixtures.city)
+            XCTFail("expected an error")
+        } catch {
+            XCTAssertEqual(error as? AppError, .server(statusCode: 500))
+        }
     }
 }

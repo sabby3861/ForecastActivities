@@ -34,6 +34,23 @@ final class OpenMeteoEndpointsTests: XCTestCase {
         }
     }
 
+    func testMarine_requestsWaveHeightForTheSameWindowAndZone() throws {
+        let request = endpoints.marine(for: Coordinate(latitude: 51.50853, longitude: -0.12574))
+        let components = try components(of: request)
+
+        XCTAssertEqual(components.host, "marine-api.open-meteo.com")
+        XCTAssertEqual(components.path, "/v1/marine")
+        XCTAssertEqual(query(components, "latitude"), "51.5085")
+        XCTAssertEqual(query(components, "longitude"), "-0.1257")
+        XCTAssertEqual(query(components, "timezone"), "auto", "must match the forecast so the dates line up")
+        XCTAssertEqual(query(components, "forecast_days"), "7")
+
+        let daily = try XCTUnwrap(query(components, "daily")).split(separator: ",").map(String.init)
+        for variable in MarineSeriesDTO.CodingKeys.allCases where variable != .time {
+            XCTAssertTrue(daily.contains(variable.rawValue), "daily= is missing \(variable.rawValue)")
+        }
+    }
+
     func testForecast_usesCustomBaseURL() throws {
         let custom = OpenMeteoEndpoints(forecastBase: URL(string: "https://proxy.example.test")!)
         let request = custom.forecast(for: Coordinate(latitude: 0, longitude: 0))

@@ -27,7 +27,8 @@ enum PreviewData {
             snowfallCM: 0,
             snowDepthM: 0,
             precipitationProbability: wet ? 80 : 10,
-            maxWindSpeedKmh: 15 + Double(offset * 3)
+            maxWindSpeedKmh: 15 + Double(offset * 3),
+            sea: .noSea
         )
     }
 
