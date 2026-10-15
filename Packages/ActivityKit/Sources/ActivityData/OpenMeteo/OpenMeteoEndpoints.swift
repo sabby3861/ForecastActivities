@@ -19,6 +19,7 @@ public struct OpenMeteoEndpoints: Sendable {
         "snowfall_sum",
         "precipitation_probability_max",
         "wind_speed_10m_max",
+        "snow_depth_max",
     ]
 
     public static let forecastDays = 7

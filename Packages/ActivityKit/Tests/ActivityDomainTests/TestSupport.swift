@@ -9,6 +9,7 @@ enum Fixture {
         minTemp: Double = 10,
         precipitationMM: Double? = 0,
         snowfallCM: Double? = 0,
+        snowDepthM: Double? = 0,
         precipitationProbability: Int? = 10,
         wind: Double? = 12,
         condition: WeatherCondition = .clear
@@ -20,6 +21,7 @@ enum Fixture {
             condition: condition,
             precipitationMM: precipitationMM,
             snowfallCM: snowfallCM,
+            snowDepthM: snowDepthM,
             precipitationProbability: precipitationProbability,
             maxWindSpeedKmh: wind
         )

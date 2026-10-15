@@ -43,7 +43,7 @@ enum Fixtures {
       "daily_units": {
         "time": "iso8601", "weather_code": "wmo code", "temperature_2m_max": "°C",
         "temperature_2m_min": "°C", "precipitation_sum": "mm", "snowfall_sum": "cm",
-        "precipitation_probability_max": "%", "wind_speed_10m_max": "km/h"
+        "precipitation_probability_max": "%", "wind_speed_10m_max": "km/h", "snow_depth_max": "m"
       },
       "daily": {
         "time": ["2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],
@@ -53,7 +53,8 @@ enum Fixtures {
         "precipitation_sum": [0.0, 6.4, 2.1, 0.0, 0.0, 0.2, 11.8],
         "snowfall_sum": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         "precipitation_probability_max": [10, 85, 60, 15, 5, 20, 95],
-        "wind_speed_10m_max": [18.4, 27.0, 31.3, 14.8, 11.2, 16.6, 42.1]
+        "wind_speed_10m_max": [18.4, 27.0, 31.3, 14.8, 11.2, 16.6, 42.1],
+        "snow_depth_max": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
       }
     }
     """.utf8)
@@ -71,7 +72,8 @@ enum Fixtures {
         "precipitation_sum": [0.0, 0.0, null, 0.0],
         "snowfall_sum": [0.0, 0.0, 0.0, 0.0],
         "precipitation_probability_max": [5, 10, null, 20],
-        "wind_speed_10m_max": [10.0, 11.0, null, 13.0]
+        "wind_speed_10m_max": [10.0, 11.0, null, 13.0],
+        "snow_depth_max": [0.0, 0.0, null, 0.0]
       }
     }
     """.utf8)
@@ -87,7 +89,8 @@ enum Fixtures {
         "precipitation_sum": [null],
         "snowfall_sum": [null],
         "precipitation_probability_max": [null],
-        "wind_speed_10m_max": [null]
+        "wind_speed_10m_max": [null],
+        "snow_depth_max": [null]
       }
     }
     """.utf8)
@@ -103,7 +106,8 @@ enum Fixtures {
         "precipitation_sum": [0.0, 0.0],
         "snowfall_sum": [0.0, 0.0],
         "precipitation_probability_max": [5, 5],
-        "wind_speed_10m_max": [10.0, 10.0]
+        "wind_speed_10m_max": [10.0, 10.0],
+        "snow_depth_max": [0.0, 0.0]
       }
     }
     """.utf8)

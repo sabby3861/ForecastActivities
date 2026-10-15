@@ -25,6 +25,7 @@ enum PreviewData {
             condition: wet ? .rain : .partlyCloudy,
             precipitationMM: wet ? 6 : 0,
             snowfallCM: 0,
+            snowDepthM: 0,
             precipitationProbability: wet ? 80 : 10,
             maxWindSpeedKmh: 15 + Double(offset * 3)
         )

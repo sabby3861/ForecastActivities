@@ -1,12 +1,10 @@
 import Foundation
 
-/// One rule object per activity. Each is a pure function of a single day's weather,
-/// which keeps the rules trivially unit-testable and lets product tweak one activity
-/// without touching the others.
+/// One rule object per activity: a pure function from one day's weather to a score.
 ///
-/// Every scorer declares its thresholds and weights as named constants rather than inline
-/// literals, so the "why" of each number is visible at the point it is defined and a
-/// reviewer can audit the rule without reading the arithmetic.
+/// Each scorer checks its hard requirements first (no snow, no skiing). If one fails, the
+/// score is 0 and the weights never run. Otherwise the score is a weighted blend of 0…1
+/// factors, and a factor whose input is missing is left out of the blend.
 public protocol ActivityScoring: Sendable {
     var activity: Activity { get }
     func score(for day: DailyWeather) -> Score
@@ -14,27 +12,33 @@ public protocol ActivityScoring: Sendable {
 
 // MARK: - Skiing
 
-/// Skiing wants cold air, ideally fresh snow, little rain and manageable wind.
+/// Skiing needs snow, either on the ground or falling. Given that, it wants cold air, a
+/// decent base, fresh snow, no rain and manageable wind.
 ///
-/// Known limitation: the Open-Meteo forecast endpoint has no snow-depth or elevation data,
-/// so a cold, dry week in a flat city still scores moderately. See README → Assumptions.
+/// Snow depth is taken at the city's grid point, so a valley town below a ski area scores
+/// 0 when there's no snow in town. See README, Assumptions.
 public struct SkiingScorer: ActivityScoring {
     enum Rule {
-        /// Daytime highs that keep snow firm. Above ~2 °C it starts to slush.
+        static let minSnowDepthM: Double = 0.05
+        static let minSnowfallCM: Double = 1
+        /// Daytime highs that keep snow firm. Above ~2 °C it turns to slush.
         static let idealMaxTemperature: ClosedRange<Double> = -15...2
         static let temperatureTolerance: Double = 6
-        /// 10 cm of fresh snow is a "powder day"; more does not score higher.
+        /// Half a metre of base covers most pistes.
+        static let baseSaturationM: Double = 0.5
+        /// 10 cm of fresh snow is a powder day.
         static let snowfallSaturationCM: Double = 10
-        /// 10 mm of rain on a ski day writes it off.
+        /// 10 mm of rain writes a ski day off.
         static let rainSaturationMM: Double = 10
-        /// Rain (as opposed to snow) is only possible above this temperature.
+        /// Above this, precipitation falls as rain rather than snow.
         static let rainThresholdC: Double = 1
         static let idealWind: ClosedRange<Double> = 0...25
         static let windTolerance: Double = 40
 
-        static let coldWeight: Double = 45
-        static let snowWeight: Double = 25
-        static let noRainWeight: Double = 15
+        static let coldWeight: Double = 30
+        static let baseWeight: Double = 25
+        static let freshSnowWeight: Double = 20
+        static let noRainWeight: Double = 10
         static let windWeight: Double = 15
     }
 
@@ -42,17 +46,21 @@ public struct SkiingScorer: ActivityScoring {
     public init() {}
 
     public func score(for day: DailyWeather) -> Score {
-        let isRaining = day.condition.isWet
-            && day.condition != .snow
-            && day.maxTemperatureC > Rule.rainThresholdC
-        let noRainFactor: Double? = isRaining
+        let hasSnow = (day.snowDepthM ?? 0) >= Rule.minSnowDepthM
+            || (day.snowfallCM ?? 0) >= Rule.minSnowfallCM
+        guard hasSnow else { return .min }
+
+        let condition = day.effectiveCondition
+        let isRaining = condition.isWet && condition != .snow && day.maxTemperatureC > Rule.rainThresholdC
+        let noRain: Double? = isRaining
             ? day.precipitationMM.map { 1 - WeatherCurves.ratio($0, saturatingAt: Rule.rainSaturationMM) }
             : 1
 
         return WeatherCurves.combine([
             (Rule.coldWeight, WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.idealMaxTemperature, tolerance: Rule.temperatureTolerance)),
-            (Rule.snowWeight, day.snowfallCM.map { WeatherCurves.ratio($0, saturatingAt: Rule.snowfallSaturationCM) }),
-            (Rule.noRainWeight, noRainFactor),
+            (Rule.baseWeight, day.snowDepthM.map { WeatherCurves.ratio($0, saturatingAt: Rule.baseSaturationM) }),
+            (Rule.freshSnowWeight, day.snowfallCM.map { WeatherCurves.ratio($0, saturatingAt: Rule.snowfallSaturationCM) }),
+            (Rule.noRainWeight, noRain),
             (Rule.windWeight, day.maxWindSpeedKmh.map { WeatherCurves.comfort($0, ideal: Rule.idealWind, tolerance: Rule.windTolerance) }),
         ])
     }
@@ -60,13 +68,14 @@ public struct SkiingScorer: ActivityScoring {
 
 // MARK: - Surfing
 
-/// Surfing wants warm air, a steady breeze (wind builds swell; too much blows it out),
-/// a dry day and — non-negotiably — no thunderstorms.
+/// Surfing needs air that isn't freezing and no likely thunderstorm. Given that, it wants
+/// warm air, a steady breeze (wind builds swell; too much blows it out) and a dry day.
 ///
 /// Known limitation: wave height / swell period live in Open-Meteo's separate Marine API,
 /// which is out of scope here. Wind speed is used as a proxy. See README → Assumptions.
 public struct SurfingScorer: ActivityScoring {
     enum Rule {
+        static let minMaxTemperatureC: Double = 5
         static let idealMaxTemperature: ClosedRange<Double> = 18...30
         static let temperatureTolerance: Double = 10
         /// Enough wind to raise a swell, not so much that the sea is "blown out".
@@ -82,8 +91,8 @@ public struct SurfingScorer: ActivityScoring {
     public init() {}
 
     public func score(for day: DailyWeather) -> Score {
-        // Lightning on open water is a hard no, regardless of everything else.
-        guard day.condition != .thunderstorm else { return .min }
+        // Lightning on open water is a hard no.
+        guard !day.isStormLikely, day.maxTemperatureC >= Rule.minMaxTemperatureC else { return .min }
 
         return WeatherCurves.combine([
             (Rule.temperatureWeight, WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.idealMaxTemperature, tolerance: Rule.temperatureTolerance)),
@@ -117,7 +126,7 @@ public struct OutdoorSightseeingScorer: ActivityScoring {
             (Rule.temperatureWeight, WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.idealMaxTemperature, tolerance: Rule.temperatureTolerance)),
             (Rule.dryWeight, day.dryness),
             (Rule.windWeight, day.maxWindSpeedKmh.map { WeatherCurves.comfort($0, ideal: Rule.idealWind, tolerance: Rule.windTolerance) }),
-            (Rule.skyWeight, day.condition.skyPleasantness),
+            (Rule.skyWeight, day.effectiveCondition.skyPleasantness),
         ])
     }
 }
@@ -148,7 +157,7 @@ public struct IndoorSightseeingScorer: ActivityScoring {
             day.dryness.map { 1 - $0 },
             1 - WeatherCurves.comfort(day.maxTemperatureC, ideal: Rule.tolerableMaxTemperature, tolerance: Rule.temperatureTolerance),
             day.maxWindSpeedKmh.map { 1 - WeatherCurves.comfort($0, ideal: Rule.tolerableWind, tolerance: Rule.windTolerance) },
-            1 - day.condition.skyPleasantness,
+            1 - day.effectiveCondition.skyPleasantness,
         ]
         // Use the *worst* signal, not the average: one strong reason to stay in is enough.
         // A missing signal is skipped rather than read as "fine".
@@ -160,9 +169,24 @@ public struct IndoorSightseeingScorer: ActivityScoring {
 // MARK: - Shared signals
 
 extension DailyWeather {
-    /// 1.0 when rain is impossible, 0.0 when it is certain. `nil` when the probability is missing.
+    /// Below this chance of rain, a thunderstorm code is treated as a passing storm.
+    static let likelyStormProbability = 50
+
+    /// 1.0 when rain is impossible, 0.0 when it's certain. `nil` when the probability is missing.
     var dryness: Double? {
         precipitationProbability.map { 1 - Double($0) / 100 }
+    }
+
+    /// Open-Meteo's daily weather code is the worst hour of the day, so one storm in the
+    /// evening marks the whole day as a thunderstorm. Only trust it when rain is likely
+    /// (or we don't know the probability).
+    var isStormLikely: Bool {
+        condition == .thunderstorm && (precipitationProbability ?? 100) >= Self.likelyStormProbability
+    }
+
+    /// The condition the rules should react to: an unlikely storm counts as showers.
+    var effectiveCondition: WeatherCondition {
+        condition == .thunderstorm && !isStormLikely ? .showers : condition
     }
 }
 

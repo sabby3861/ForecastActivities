@@ -57,6 +57,8 @@ public struct DailyWeather: Identifiable, Hashable, Sendable {
     public let precipitationMM: Double?
     /// Fresh snowfall in centimetres.
     public let snowfallCM: Double?
+    /// Snow already on the ground, in metres.
+    public let snowDepthM: Double?
     /// Maximum precipitation probability for the day, 0–100.
     public let precipitationProbability: Int?
     /// Maximum 10 m wind speed in km/h.
@@ -71,6 +73,7 @@ public struct DailyWeather: Identifiable, Hashable, Sendable {
         condition: WeatherCondition,
         precipitationMM: Double?,
         snowfallCM: Double?,
+        snowDepthM: Double?,
         precipitationProbability: Int?,
         maxWindSpeedKmh: Double?
     ) {
@@ -80,6 +83,7 @@ public struct DailyWeather: Identifiable, Hashable, Sendable {
         self.condition = condition
         self.precipitationMM = precipitationMM
         self.snowfallCM = snowfallCM
+        self.snowDepthM = snowDepthM
         self.precipitationProbability = precipitationProbability.map { min(max($0, 0), 100) }
         self.maxWindSpeedKmh = maxWindSpeedKmh
     }

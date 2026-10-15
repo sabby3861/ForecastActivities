@@ -39,6 +39,7 @@ struct DailySeriesDTO: Decodable, Sendable {
     let snowfallSum: [Double?]
     let precipitationProbabilityMax: [Int?]
     let windSpeedMax: [Double?]
+    let snowDepthMax: [Double?]
 
     /// `CaseIterable` so a test can assert the request's `daily=` list covers every key here.
     enum CodingKeys: String, CodingKey, CaseIterable {
@@ -50,5 +51,6 @@ struct DailySeriesDTO: Decodable, Sendable {
         case snowfallSum = "snowfall_sum"
         case precipitationProbabilityMax = "precipitation_probability_max"
         case windSpeedMax = "wind_speed_10m_max"
+        case snowDepthMax = "snow_depth_max"
     }
 }

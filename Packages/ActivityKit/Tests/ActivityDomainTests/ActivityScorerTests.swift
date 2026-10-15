@@ -1,8 +1,9 @@
 import ActivityDomain
 import XCTest
 
-/// Behavioural tests for each rule. They assert *relative* orderings and hard limits rather
-/// than exact numbers, so reasonable weight tuning does not break the suite.
+/// Tests for each rule. They check relative orderings and hard limits (gates that force 0,
+/// the indoor floor, the 100 cap) rather than exact scores, so tuning a weight doesn't
+/// break them.
 final class ActivityScorerTests: XCTestCase {
     // MARK: - Invariants shared by every scorer
 
@@ -26,34 +27,33 @@ final class ActivityScorerTests: XCTestCase {
 
     // MARK: - Skiing
 
-    func testSkiing_coldSnowyDayBeatsWarmDryDay() {
+    func testSkiing_coldPowderDayBeatsMildDayOnTheSameBase() {
         let scorer = SkiingScorer()
-        let powder = scorer.score(for: Fixture.day(maxTemp: -4, minTemp: -10, snowfallCM: 12, wind: 10, condition: .snow))
-        let warm = scorer.score(for: Fixture.day(maxTemp: 24, minTemp: 15, condition: .clear))
-        XCTAssertGreaterThan(powder, warm)
+        let powder = scorer.score(for: Fixture.day(maxTemp: -4, minTemp: -10, snowfallCM: 12, snowDepthM: 0.8, wind: 10, condition: .snow))
+        let mild = scorer.score(for: Fixture.day(maxTemp: 7, minTemp: 1, snowDepthM: 0.8, condition: .clear))
+        XCTAssertGreaterThan(powder, mild)
         XCTAssertGreaterThanOrEqual(powder.value, 90)
-        XCTAssertEqual(warm.value, 30, "only the no-rain and calm-wind factors (15 + 15) survive on a warm, dry day")
     }
 
     func testSkiing_rainPenalisesButSnowDoesNot() {
         let scorer = SkiingScorer()
-        let rainy = scorer.score(for: Fixture.day(maxTemp: 3, minTemp: -1, precipitationMM: 10, condition: .rain))
-        let snowy = scorer.score(for: Fixture.day(maxTemp: 3, minTemp: -1, precipitationMM: 10, snowfallCM: 0, condition: .snow))
+        let rainy = scorer.score(for: Fixture.day(maxTemp: 3, minTemp: -1, precipitationMM: 10, snowDepthM: 0.5, condition: .rain))
+        let snowy = scorer.score(for: Fixture.day(maxTemp: 3, minTemp: -1, precipitationMM: 10, snowDepthM: 0.5, condition: .snow))
         XCTAssertLessThan(rainy, snowy)
     }
 
     func testSkiing_strongWindLowersScore() {
         let scorer = SkiingScorer()
-        let calm = scorer.score(for: Fixture.day(maxTemp: -5, minTemp: -10, wind: 10))
-        let gale = scorer.score(for: Fixture.day(maxTemp: -5, minTemp: -10, wind: 70))
+        let calm = scorer.score(for: Fixture.day(maxTemp: -5, minTemp: -10, snowDepthM: 0.5, wind: 10))
+        let gale = scorer.score(for: Fixture.day(maxTemp: -5, minTemp: -10, snowDepthM: 0.5, wind: 70))
         XCTAssertLessThan(gale, calm)
     }
 
     // MARK: - Surfing
 
-    func testSurfing_thunderstormIsAlwaysZero() {
-        let score = SurfingScorer().score(for: Fixture.day(maxTemp: 25, minTemp: 20, precipitationProbability: 0, wind: 20, condition: .thunderstorm))
-        XCTAssertEqual(score, .min)
+    func testSurfing_likelyThunderstormIsZero() {
+        let day = Fixture.day(maxTemp: 25, minTemp: 20, precipitationProbability: 80, wind: 10, condition: .thunderstorm)
+        XCTAssertEqual(SurfingScorer().score(for: day), .min)
     }
 
     func testSurfing_moderateBreezeBeatsCalmAndGale() {

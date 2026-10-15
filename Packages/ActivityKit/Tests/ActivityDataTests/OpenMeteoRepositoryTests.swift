@@ -78,6 +78,7 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
         XCTAssertEqual(first.minTemperatureC, 8.1)
         XCTAssertEqual(first.precipitationProbability, 10)
         XCTAssertEqual(first.maxWindSpeedKmh, 18.4)
+        XCTAssertEqual(first.snowDepthM, 0)
         XCTAssertEqual(first.condition, .overcast)
 
         XCTAssertEqual(forecast.days[1].condition, .rain)
@@ -120,6 +121,7 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
         XCTAssertNil(third.precipitationMM, "missing values are passed on, not guessed")
         XCTAssertNil(third.precipitationProbability)
         XCTAssertNil(third.maxWindSpeedKmh)
+        XCTAssertNil(third.snowDepthM)
     }
 
     func testForecast_withNoUsableDays_throwsNoForecastAvailable() async {

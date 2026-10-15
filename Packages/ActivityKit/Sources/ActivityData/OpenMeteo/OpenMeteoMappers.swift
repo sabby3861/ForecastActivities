@@ -32,7 +32,7 @@ enum OpenMeteoMapper {
         let lengths = [
             series.weatherCode.count, series.temperatureMax.count, series.temperatureMin.count,
             series.precipitationSum.count, series.snowfallSum.count,
-            series.precipitationProbabilityMax.count, series.windSpeedMax.count,
+            series.precipitationProbabilityMax.count, series.windSpeedMax.count, series.snowDepthMax.count,
         ]
         guard lengths.allSatisfy({ $0 == count }) else {
             throw AppError.invalidResponse
@@ -56,6 +56,7 @@ enum OpenMeteoMapper {
                 condition: WeatherCondition(wmoCode: code),
                 precipitationMM: series.precipitationSum[index],
                 snowfallCM: series.snowfallSum[index],
+                snowDepthM: series.snowDepthMax[index],
                 precipitationProbability: series.precipitationProbabilityMax[index],
                 maxWindSpeedKmh: series.windSpeedMax[index]
             )

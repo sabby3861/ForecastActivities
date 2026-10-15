@@ -74,6 +74,7 @@ enum Fixture {
             condition: .clear,
             precipitationMM: 0,
             snowfallCM: 0,
+            snowDepthM: 0,
             precipitationProbability: 5,
             maxWindSpeedKmh: 8
         )
