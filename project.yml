@@ -55,6 +55,8 @@ schemes:
     test:
       config: Debug
       gatherCoverageData: true
+      # Package test targets must use the `package:` form; a plain
+      # "ActivityKit/ActivityDomainTests" fails with "invalid project reference".
       targets:
         - package: ActivityKit/ActivityDomainTests
         - package: ActivityKit/ActivityDataTests

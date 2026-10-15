@@ -60,7 +60,6 @@ swift test
 
 The SwiftUI views aren't tested. They're mostly a `switch` over state. Snapshot tests would be the right tool, but I didn't want to add a dependency for them.
 
-XcodeGen only accepts package test targets in a scheme written as `- package: ActivityKit/ActivityDomainTests`. The plain `ActivityKit/ActivityDomainTests` form fails with "invalid project reference".
 
 ## API usage
 
