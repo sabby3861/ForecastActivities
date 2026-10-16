@@ -4,11 +4,7 @@ import ActivityPresentation
 import Foundation
 import SwiftUI
 
-/// Composition root: the one place that knows how concrete types are wired together.
-///
-/// Views receive view models from here instead of constructing repositories themselves, so
-/// swapping the network stack (stub for previews/UI tests, a cached repository later) is a
-/// one-line change in `live()` rather than a hunt through the feature code.
+/// Composition root: the one place concrete types are wired together.
 @MainActor
 struct AppContainer {
     let citySearchRepository: any CitySearchRepository

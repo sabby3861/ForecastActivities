@@ -1,8 +1,7 @@
 import ActivityDomain
 import Foundation
 
-/// Sends a request, checks the status code, decodes JSON, and translates every failure
-/// into an `AppError`. Repositories compose this with an endpoint and a mapper.
+/// Sends a request, checks the status, decodes JSON and maps every failure to `AppError`.
 public struct APIClient: Sendable {
     private let http: any HTTPClient
 
@@ -27,25 +26,15 @@ public struct APIClient: Sendable {
         }
 
         do {
-            return try Self.makeDecoder().decode(T.self, from: response.data)
+            return try JSONDecoder().decode(T.self, from: response.data)
         } catch {
-            // Usually a contract break, but a captive portal's HTML login page lands here
-            // too, so this stays retryable.
+            // Usually a contract break, but a captive portal's HTML login page lands here too.
             throw AppError.invalidResponse
         }
     }
-
-    /// `JSONDecoder` is not `Sendable`, so we build one per call rather than storing it.
-    /// Construction is cheap; sharing would force an actor hop on every decode.
-    /// DTOs declare explicit `CodingKeys` instead of relying on `.convertFromSnakeCase`, so
-    /// the mapping from the API's `temperature_2m_max` is visible and greppable.
-    private static func makeDecoder() -> JSONDecoder {
-        JSONDecoder()
-    }
 }
 
-/// Translates transport errors into the domain's `AppError`. Kept in one place so the
-/// retry/offline semantics are decided once, not per repository.
+/// Transport errors → `AppError`, decided once here rather than per repository.
 enum AppErrorMapping {
     static func map(_ error: any Error) -> AppError {
         if let appError = error as? AppError {

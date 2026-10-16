@@ -12,8 +12,7 @@ public struct ActivityRanking: Equatable, Sendable {
         self.recommendations = recommendations
     }
 
-    /// True when wave data was missing for at least one day, so surfing fell back to the
-    /// wind-based estimate. The screen shows a note when this is set.
+    /// True when any day lacked wave data, so surfing used the wind-based estimate.
     public var surfingIsEstimated: Bool {
         forecast.days.contains { $0.sea == .unknown }
     }
@@ -26,8 +25,7 @@ public final class ActivityRankingViewModel {
     public let city: City
     public private(set) var state: LoadState<ActivityRanking> = .idle
 
-    /// Set when a pull-to-refresh fails while content is already on screen. The content is
-    /// kept (it is still useful) and the view shows a non-blocking notice instead.
+    /// A failed pull-to-refresh keeps the content on screen and shows this as a notice.
     public private(set) var refreshError: AppError?
 
     private let repository: any ForecastRepository
@@ -43,8 +41,7 @@ public final class ActivityRankingViewModel {
         self.rankActivities = rankActivities
     }
 
-    /// Initial load. Safe to call from `.task {}` repeatedly: it is a no-op once loaded, so
-    /// navigating back and forth does not re-fetch.
+    /// Initial load. A no-op once loaded, so `.task {}` can call it repeatedly.
     public func load() async {
         guard state.value == nil else { return }
         state = .loading

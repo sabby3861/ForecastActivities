@@ -3,8 +3,7 @@ import ActivityPresentation
 import Foundation
 import SwiftUI
 
-/// Formatting helpers kept out of the views so they stay declarative and the formats are
-/// consistent across screens.
+/// Shared formatting so the two screens agree.
 enum Formatting {
     /// "Tue 14" — weekday + day-of-month, rendered in the *location's* time zone.
     static func shortDay(_ date: Date, in timeZone: TimeZone) -> String {

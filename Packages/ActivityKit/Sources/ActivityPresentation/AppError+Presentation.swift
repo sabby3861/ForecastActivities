@@ -1,8 +1,7 @@
 import ActivityDomain
 import Foundation
 
-/// User-facing copy for errors. Lives in Presentation, not Domain, because wording is a
-/// UI concern (and the obvious place to hook localisation later).
+/// User-facing copy for errors. Kept out of the domain; the place to localise later.
 public extension AppError {
     var userTitle: String {
         switch self {

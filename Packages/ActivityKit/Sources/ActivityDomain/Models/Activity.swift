@@ -1,7 +1,6 @@
 import Foundation
 
-/// The activities the product ranks. Order matters: it is the deterministic tie-break
-/// when two activities score identically, so the UI never reorders between refreshes.
+/// The activities the product ranks. Declaration order is the tie-break when scores match.
 public enum Activity: String, CaseIterable, Identifiable, Hashable, Sendable {
     case skiing
     case surfing
@@ -10,14 +9,11 @@ public enum Activity: String, CaseIterable, Identifiable, Hashable, Sendable {
 
     public var id: String { rawValue }
 
-    // No display text here on purpose: user-facing copy lives in ActivityPresentation
-    // (`Activity.displayName`), where it can be localised without touching the domain.
+    // Display names live in ActivityPresentation.
 }
 
-/// A suitability score from 0 (don't bother) to 100 (perfect conditions).
-///
-/// Wrapping the integer in a type stops scores being accidentally mixed with other
-/// integers (temperatures, percentages) and gives one place to enforce the 0…100 invariant.
+/// A suitability score, clamped to 0…100. Its own type so it can't be mixed up with a
+/// temperature or a percentage.
 public struct Score: Hashable, Comparable, Sendable {
     public static let min = Score(value: 0)
     public static let max = Score(value: 100)
@@ -53,14 +49,14 @@ public struct DailyScore: Identifiable, Hashable, Sendable {
 /// The ranking output for one activity across the forecast window.
 public struct ActivityRecommendation: Identifiable, Hashable, Sendable {
     public let activity: Activity
-    /// Mean of the daily scores — "how good is this week, overall, for this activity".
+    /// Mean of the daily scores.
     public let overallScore: Score
     /// One entry per forecast day, in date order.
     public let dailyScores: [DailyScore]
 
     public var id: Activity { activity }
 
-    /// The single best day, if any. Ties resolve to the earliest day (sooner is more useful).
+    /// The best day; ties go to the earlier one.
     public var bestDay: DailyScore? {
         dailyScores.max { lhs, rhs in
             lhs.score < rhs.score || (lhs.score == rhs.score && lhs.date > rhs.date)

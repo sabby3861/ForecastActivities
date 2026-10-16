@@ -2,9 +2,6 @@ import ActivityDomain
 import Foundation
 
 /// Converts Open-Meteo DTOs into domain models.
-///
-/// Mapping lives in its own type (not inside the DTOs or repositories) so it can be tested
-/// with hand-written fixtures and so the DTOs stay dumb mirrors of the wire format.
 enum OpenMeteoMapper {
     static func city(from dto: GeocodingResultDTO) -> City {
         City(
@@ -107,10 +104,8 @@ private struct SeaLookup {
     }
 }
 
-/// Parses Open-Meteo's `yyyy-MM-dd` day strings as local midnight in the given zone.
-///
-/// A struct wrapping `DateFormatter` (which is not `Sendable`) so the formatter is created
-/// once per mapping call and never shared across threads.
+/// Parses `yyyy-MM-dd` as local midnight in the given zone. `DateFormatter` isn't
+/// `Sendable`, so one is built per mapping call.
 private struct DayParser {
     private let formatter: DateFormatter
 

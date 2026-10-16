@@ -1,9 +1,8 @@
 import ActivityDomain
 import Foundation
 
-/// Explicit screen state. A view switches over this and renders exactly one branch, which
-/// rules out the classic "spinner *and* stale list *and* error banner" bugs that come from
-/// juggling `isLoading` / `items` / `error` as three independent properties.
+/// Screen state as one enum, so a view renders exactly one branch and "spinner and stale
+/// list and error banner at once" can't happen.
 public enum LoadState<Value: Equatable & Sendable>: Equatable, Sendable {
     /// Nothing requested yet (e.g. search field is empty).
     case idle

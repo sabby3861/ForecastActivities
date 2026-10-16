@@ -11,10 +11,8 @@ public struct Coordinate: Hashable, Sendable {
     }
 }
 
-/// A place the user can pick from search results.
-///
-/// `id` is the Open-Meteo geonames identifier. We keep it (rather than synthesising one)
-/// so results stay stable across refreshes and can be used as a `NavigationStack` value.
+/// A place from search results. `id` is Open-Meteo's geonames id, so it is stable across
+/// refreshes and usable as a `NavigationStack` value.
 public struct City: Identifiable, Hashable, Sendable {
     public let id: Int
     public let name: String
@@ -31,7 +29,7 @@ public struct City: Identifiable, Hashable, Sendable {
         self.coordinate = coordinate
     }
 
-    /// "London, England, United Kingdom" — omits missing parts rather than printing "nil".
+    /// "London, England, United Kingdom", omitting missing parts.
     public var displayName: String {
         [name, region, country]
             .compactMap { $0 }

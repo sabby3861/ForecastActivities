@@ -1,17 +1,13 @@
 import ActivityDomain
 import Foundation
 
-/// Builds the three Open-Meteo requests the app needs: city search, forecast and marine.
-///
-/// Base URLs are injectable so tests (and a future staging/proxy setup) can point elsewhere
-/// without touching the request-building logic.
+/// Builds the three Open-Meteo requests. Base URLs are injectable for tests.
 public struct OpenMeteoEndpoints: Sendable {
     public static let productionGeocodingBase = URL(string: "https://geocoding-api.open-meteo.com")!
     public static let productionForecastBase = URL(string: "https://api.open-meteo.com")!
     public static let productionMarineBase = URL(string: "https://marine-api.open-meteo.com")!
 
-    /// The daily variables the scoring rules consume. Declared once so the request and the
-    /// DTO cannot drift apart silently.
+    /// The daily variables the scoring rules consume; a test checks the DTO matches.
     public static let dailyVariables = [
         "weather_code",
         "temperature_2m_max",
@@ -81,9 +77,7 @@ public struct OpenMeteoEndpoints: Sendable {
         ])
     }
 
-    /// Assembles a GET request. Every input is a compile-time constant or a `URLQueryItem`
-    /// (which `URLComponents` percent-encodes), so a `nil` URL here is a programmer error —
-    /// hence a `preconditionFailure` with a message rather than a bare `!`.
+    /// Inputs are constants and percent-encoded query items, so a nil URL is a programmer error.
     private static func request(base: URL, path: String, queryItems: [URLQueryItem]) -> URLRequest {
         guard var components = URLComponents(url: base.appending(path: path), resolvingAgainstBaseURL: false) else {
             preconditionFailure("Base URL \(base) is not a valid URLComponents source")
@@ -99,8 +93,7 @@ public struct OpenMeteoEndpoints: Sendable {
         return request
     }
 
-    /// Locale-independent decimal formatting: a device set to a comma-decimal locale must
-    /// still send `51.5` and not `51,5`.
+    /// Locale-independent: a comma-decimal device must still send `51.5`, not `51,5`.
     private static func format(_ value: Double) -> String {
         String(format: "%.4f", locale: Locale(identifier: "en_US_POSIX"), value)
     }

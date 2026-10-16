@@ -7,15 +7,6 @@ import Foundation
 public enum WeatherCurves {
     /// A trapezoid: 1.0 anywhere inside `ideal`, then falling linearly to 0.0 once the value
     /// is `tolerance` units beyond either edge of the range.
-    ///
-    /// ```
-    /// 1 ┤      ┌───────┐
-    ///   │     /         \
-    /// 0 ┼────┘           └────
-    ///        ^  ideal   ^
-    ///    -tolerance   +tolerance
-    /// ```
-    ///
     /// Example: `comfort(28, ideal: 15...25, tolerance: 10)` = 0.7 (3 degrees over, out of 10).
     public static func comfort(_ value: Double, ideal: ClosedRange<Double>, tolerance: Double) -> Double {
         precondition(tolerance > 0, "tolerance must be positive")

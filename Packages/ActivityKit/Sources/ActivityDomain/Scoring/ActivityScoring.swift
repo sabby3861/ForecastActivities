@@ -165,12 +165,11 @@ public struct OutdoorSightseeingScorer: ActivityScoring {
 
 // MARK: - Indoor sightseeing
 
-/// Indoor sightseeing is the fallback. It's never a bad idea, and it's the best one when
-/// the weather is bad *and* nothing else is worth doing. Cold alone shouldn't send you to a
-/// museum on a powder day, so it also looks at the best other activity that day.
+/// The fallback: best when the weather is bad *and* nothing else is worth doing, so a cold
+/// powder day doesn't send you to a museum.
 ///
-/// Score = floor + (1 − floor) × unpleasantness × (1 − best alternative). Unpleasantness is
-/// the worst signal outside, not the average: one strong reason to stay in is enough.
+/// Score = floor + (1 − floor) × unpleasantness × (1 − best alternative), where
+/// unpleasantness is the worst outdoor signal, not the average.
 public struct IndoorSightseeingScorer: Sendable {
     enum Rule {
         /// Never below 50.

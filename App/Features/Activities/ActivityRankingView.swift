@@ -106,7 +106,6 @@ private struct ActivityRow: View {
                 ScoreBadge(score: recommendation.overallScore)
             }
 
-            // Purely decorative: the badge already states the number and the band.
             ProgressView(value: Double(recommendation.overallScore.value), total: 100)
                 .tint(recommendation.overallScore.tint)
                 .accessibilityHidden(true)

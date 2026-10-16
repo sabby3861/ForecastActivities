@@ -1,8 +1,7 @@
 import ActivityDomain
 import Foundation
 
-/// User-facing names for activities. Kept out of the domain so the rules stay free of copy,
-/// and in one place so localisation (a string catalog) is a single-file change.
+/// User-facing names, kept out of the domain.
 public extension Activity {
     var displayName: String {
         switch self {
@@ -14,8 +13,7 @@ public extension Activity {
     }
 }
 
-/// Human-readable bands for a score. Presentation decides what "good" means to a person;
-/// the domain only promises 0…100.
+/// Human-readable bands for a score.
 public extension Score {
     enum Band: Sendable {
         case excellent, good, fair, poor

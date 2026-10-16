@@ -20,11 +20,8 @@ struct GeocodingResultDTO: Decodable, Sendable {
 
 // MARK: - Forecast API
 
-/// Shape of `GET api.open-meteo.com/v1/forecast` with the daily variables we request.
-///
-/// Open-Meteo returns **parallel arrays** (one entry per day) and individual entries can be
-/// `null` when a model has no value, so every series is `[T?]`. The mapper is responsible
-/// for turning this into one `DailyWeather` per day.
+/// Shape of `GET api.open-meteo.com/v1/forecast`. Daily values are parallel arrays, one
+/// entry per day, and any entry can be `null`.
 struct ForecastResponseDTO: Decodable, Sendable {
     let timezone: String
     let daily: DailySeriesDTO

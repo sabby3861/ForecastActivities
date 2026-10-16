@@ -1,9 +1,7 @@
 import ActivityDomain
 import Foundation
 
-/// The raw result of an HTTP exchange. A tiny value type instead of `HTTPURLResponse`
-/// so test doubles can build one in a single line and nothing in the package depends on
-/// `URLSession` types above this file.
+/// Status and body of an HTTP exchange. Small enough for a test double to build in one line.
 public struct HTTPResponse: Sendable {
     public let statusCode: Int
     public let data: Data
@@ -16,10 +14,7 @@ public struct HTTPResponse: Sendable {
     public var isSuccess: Bool { (200..<300).contains(statusCode) }
 }
 
-/// The seam between our code and the network.
-///
-/// Everything above this protocol (API client, repositories, view models) is testable with
-/// a stub that returns canned `HTTPResponse` values — no `URLProtocol` subclassing needed.
+/// The network seam. Everything above it is tested with a stub that returns canned responses.
 public protocol HTTPClient: Sendable {
     func send(_ request: URLRequest) async throws -> HTTPResponse
 }
