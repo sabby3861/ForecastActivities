@@ -124,6 +124,10 @@ Not done:
 
 Pull-to-refresh is the only way to refresh. Dark mode works because only system colours are used.
 
+## Time spent
+
+About 4 hours on the first version that met the brief: architecture, the Open-Meteo client, the scoring, both screens and tests. About 6 hours more after reviewing it: hard requirements for skiing and surfing, the Marine API, `nil` instead of 0 for missing values, and Swift Testing scenarios. The second part fixed real ranking bugs (surfing ranked first in Denver), so I kept it rather than ship the four-hour version.
+
 ## Production readiness
 
 Before shipping this for real, I'd add:
@@ -141,4 +145,4 @@ The same layout maps directly onto Android: a pure Kotlin `:domain` module, a `:
 
 ## AI usage
 
-I used Claude Code throughout, for boilerplate and as a reviewer. The scoring gates, the Marine API fallback and the indoor-vs-best-alternative rule were worked out together in a review session after the first version let surfing rank first in Denver; I then verified every rule by hand and against the live Open-Meteo APIs for about ten cities, and the test suite — including a mutation check on the gates — passes in both swift test and Xcode.
+I used Claude Code throughout, for boilerplate and as a reviewer. The scoring gates, the Marine API fallback and the indoor-vs-best-alternative rule were worked out together in a review session after the first version let surfing rank first in Denver; I then verified every rule by hand and against the live Open-Meteo APIs (see API usage), and the test suite — including a mutation check on the gates — passes in both swift test and Xcode.
