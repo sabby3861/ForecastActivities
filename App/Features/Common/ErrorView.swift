@@ -28,9 +28,10 @@ struct ErrorView: View {
     private var symbolName: String {
         switch error {
         case .offline: return "wifi.slash"
-        case .server, .network: return "cloud.bolt"
+        case .serverError, .network: return "cloud.bolt"
+        case .timedOut: return "hourglass"
         case .noForecastAvailable: return "calendar.badge.exclamationmark"
-        case .invalidResponse, .cancelled: return "exclamationmark.triangle"
+        case .clientError, .invalidResponse, .cancelled: return "exclamationmark.triangle"
         }
     }
 }

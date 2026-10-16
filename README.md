@@ -29,7 +29,7 @@ Presentation and Data both depend on Domain, and neither knows about the other. 
 
 Each screen's state is a `LoadState` enum (`idle`, `loading`, `loaded`, `failed`), and the views switch over it. The ranking screen also has a separate `refreshError`, so a failed pull-to-refresh can show a small notice without throwing away good content.
 
-Errors from the network layer (URLError, HTTP status, decoding) are mapped to a single `AppError` type in one place. View models only ever see that type. The user-facing wording lives in the presentation layer.
+Errors from the network layer (URLError, HTTP status, decoding) are mapped to a single `AppError` type in one place. View models only ever see that type. 4xx, 5xx and timeouts are separate cases, because they need different answers: a 4xx won't succeed on a second try, so there's no "Try again" button, while a 5xx or a timeout usually will. The user-facing wording lives in the presentation layer.
 
 Each scoring rule conforms to `ActivityScoring`, a pure function from one day's weather to a score. `IndoorSightseeingScorer` is the one rule that doesn't. It's the fallback, so it's scored against the best other activity that day rather than on the weather alone: a −5 °C powder day is bad weather for being outside, but it must not send the user to a museum when skiing is excellent. The trade-off is that the fallback is coupled to the other rules, so `RankActivitiesUseCase` scores it last, once the others are known.
 

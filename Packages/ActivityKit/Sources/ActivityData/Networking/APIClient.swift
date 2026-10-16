@@ -20,14 +20,17 @@ public struct APIClient: Sendable {
         }
 
         guard response.isSuccess else {
-            throw AppError.server(statusCode: response.statusCode)
+            switch response.statusCode {
+            case 400...499: throw AppError.clientError(statusCode: response.statusCode)
+            default: throw AppError.serverError(statusCode: response.statusCode)
+            }
         }
 
         do {
             return try Self.makeDecoder().decode(T.self, from: response.data)
         } catch {
-            // Decoding failures are a contract break, not a connectivity problem:
-            // retrying will not help, and the user cannot fix it.
+            // Usually a contract break, but a captive portal's HTML login page lands here
+            // too, so this stays retryable.
             throw AppError.invalidResponse
         }
     }
@@ -55,12 +58,13 @@ enum AppErrorMapping {
             switch urlError.code {
             case .cancelled:
                 return .cancelled
+            case .timedOut:
+                return .timedOut
             case .notConnectedToInternet,
                  .networkConnectionLost,
                  .cannotFindHost,
                  .cannotConnectToHost,
                  .dnsLookupFailed,
-                 .timedOut,
                  .internationalRoamingOff,
                  .dataNotAllowed:
                 return .offline

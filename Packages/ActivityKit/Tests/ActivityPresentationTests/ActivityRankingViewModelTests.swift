@@ -46,13 +46,13 @@ final class ActivityRankingViewModelTests: XCTestCase {
         let counter = CallCounter()
         let repository = StubForecastRepository { _ in
             await counter.increment()
-            if await counter.count == 1 { throw AppError.server(statusCode: 502) }
+            if await counter.count == 1 { throw AppError.serverError(statusCode: 502) }
             return Fixture.forecast
         }
         let sut = ActivityRankingViewModel(city: Fixture.london, repository: repository)
 
         await sut.load()
-        XCTAssertEqual(sut.state, .failed(.server(statusCode: 502)))
+        XCTAssertEqual(sut.state, .failed(.serverError(statusCode: 502)))
 
         await sut.retry()
         XCTAssertNotNil(sut.state.value)

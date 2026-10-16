@@ -6,13 +6,18 @@ import Foundation
 /// `DecodingError`) into these cases so the presentation layer can decide what to show
 /// and whether to offer "Retry" without knowing anything about URLSession.
 public enum AppError: Error, Equatable, Sendable {
-    /// No connectivity, DNS failure, timeout — anything where retrying later may help.
+    /// No connectivity or DNS failure — anything where retrying later may help.
     case offline
-    /// The server answered with a non-2xx status.
-    case server(statusCode: Int)
+    /// The server rejected the request (4xx). Sending the same request again won't help.
+    case clientError(statusCode: Int)
+    /// The server failed (5xx, or any other non-2xx status). Usually temporary.
+    case serverError(statusCode: Int)
+    /// The request took longer than the session's timeout.
+    case timedOut
     /// The response was 2xx but could not be understood (malformed JSON, missing fields).
+    /// Retryable: a captive portal answers 200 with an HTML login page.
     case invalidResponse
-    /// The forecast came back with no usable days.
+    /// The forecast came back with no usable days. Retrying returns the same data.
     case noForecastAvailable
     /// The work was cancelled (user typed again, screen dismissed). Never shown to the user.
     case cancelled
@@ -22,8 +27,8 @@ public enum AppError: Error, Equatable, Sendable {
     /// Whether offering the user a "Try again" action makes sense.
     public var isRetryable: Bool {
         switch self {
-        case .offline, .server, .network, .noForecastAvailable: return true
-        case .invalidResponse, .cancelled: return false
+        case .offline, .serverError, .timedOut, .network, .invalidResponse: return true
+        case .clientError, .noForecastAvailable, .cancelled: return false
         }
     }
 }

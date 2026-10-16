@@ -60,7 +60,7 @@ final class CitySearchViewModelTests: XCTestCase {
         let counter = CallCounter()
         let repository = StubCitySearchRepository { _ in
             await counter.increment()
-            if await counter.count == 1 { throw AppError.server(statusCode: 500) }
+            if await counter.count == 1 { throw AppError.serverError(statusCode: 500) }
             return [Fixture.london]
         }
         let sut = CitySearchViewModel(repository: repository, debounce: .zero)

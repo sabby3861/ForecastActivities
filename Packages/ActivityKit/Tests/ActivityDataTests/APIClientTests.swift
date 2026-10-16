@@ -20,12 +20,21 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(sent?.url, request.url)
     }
 
-    func testNon2xxStatus_isServerError() async {
+    func test5xxStatus_isServerError() async {
         let client = APIClient(http: StubHTTPClient.returning(status: 503, data: Data()))
 
-        await assertThrows(AppError.server(statusCode: 503)) {
+        await assertThrows(AppError.serverError(statusCode: 503)) {
             let _: Payload = try await client.get(self.request)
         }
+    }
+
+    func test404_isClientError_andNotRetryable() async {
+        let client = APIClient(http: StubHTTPClient.returning(status: 404, data: Data()))
+
+        await assertThrows(AppError.clientError(statusCode: 404)) {
+            let _: Payload = try await client.get(self.request)
+        }
+        XCTAssertFalse(AppError.clientError(statusCode: 404).isRetryable)
     }
 
     func testMalformedJSON_isInvalidResponse() async {
@@ -52,10 +61,10 @@ final class APIClientTests: XCTestCase {
         }
     }
 
-    func testTimeout_isOffline() async {
+    func testTimeout_isTimedOut() async {
         let client = APIClient(http: StubHTTPClient.failing(with: URLError(.timedOut)))
 
-        await assertThrows(AppError.offline) {
+        await assertThrows(AppError.timedOut) {
             let _: Payload = try await client.get(self.request)
         }
     }

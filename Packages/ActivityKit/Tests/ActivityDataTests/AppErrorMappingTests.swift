@@ -11,12 +11,16 @@ struct AppErrorMappingTests {
         .cannotFindHost,
         .cannotConnectToHost,
         .dnsLookupFailed,
-        .timedOut,
         .internationalRoamingOff,
         .dataNotAllowed,
     ])
     func offline(code: URLError.Code) {
         #expect(AppErrorMapping.map(URLError(code)) == .offline)
+    }
+
+    @Test("A timeout is reported as timed out, not offline")
+    func timedOut() {
+        #expect(AppErrorMapping.map(URLError(.timedOut)) == .timedOut)
     }
 
     @Test("Cancellation from either source maps to cancelled", arguments: [

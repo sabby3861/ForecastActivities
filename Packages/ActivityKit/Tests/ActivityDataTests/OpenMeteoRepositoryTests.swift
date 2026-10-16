@@ -57,7 +57,7 @@ final class OpenMeteoCitySearchRepositoryTests: XCTestCase {
             _ = try await repository.search(query: "London")
             XCTFail("expected an error")
         } catch {
-            XCTAssertEqual(error as? AppError, .server(statusCode: 429))
+            XCTAssertEqual(error as? AppError, .clientError(statusCode: 429))
         }
     }
 }
@@ -234,7 +234,7 @@ final class OpenMeteoForecastRepositoryTests: XCTestCase {
             _ = try await repository.forecast(for: Fixtures.city)
             XCTFail("expected an error")
         } catch {
-            XCTAssertEqual(error as? AppError, .server(statusCode: 500))
+            XCTAssertEqual(error as? AppError, .serverError(statusCode: 500))
         }
     }
 }
