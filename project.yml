@@ -43,7 +43,6 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
 
 schemes:
   ForecastActivities:

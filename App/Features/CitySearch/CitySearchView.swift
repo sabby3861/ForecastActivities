@@ -19,6 +19,7 @@ struct CitySearchView: View {
                     if let container {
                         ActivityRankingView(viewModel: container.makeActivityRankingViewModel(for: city))
                     } else {
+                        let _ = assertionFailure("AppContainer missing from environment")
                         // Only reachable if the root forgot to install the container — a
                         // programmer error, surfaced loudly in debug and gracefully in release.
                         ContentUnavailableView("Configuration error", systemImage: "exclamationmark.triangle")

@@ -96,7 +96,6 @@ public struct OpenMeteoEndpoints: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = 15
         return request
     }
 

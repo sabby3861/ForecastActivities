@@ -61,8 +61,7 @@ public final class CitySearchViewModel {
         if delay == nil {
             state = .loading
         }
-        searchTask = Task { [weak self] in
-            guard let self else { return }
+        searchTask = Task {
             do {
                 if let delay {
                     try await Task.sleep(for: delay)

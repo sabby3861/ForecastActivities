@@ -13,8 +13,7 @@ public struct OpenMeteoCitySearchRepository: CitySearchRepository {
 
     public func search(query: String) async throws -> [City] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        // The API rejects queries shorter than 2 characters; short-circuit rather than
-        // pay for a round trip that will 400.
+        // One character matches almost everything, so wait for a second one before searching.
         guard trimmed.count >= 2 else { return [] }
 
         let response: GeocodingResponseDTO = try await client.get(endpoints.citySearch(query: trimmed))

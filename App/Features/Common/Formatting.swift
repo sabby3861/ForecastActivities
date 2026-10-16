@@ -74,8 +74,7 @@ extension WeatherCondition {
 }
 
 extension Score.Band {
-    /// Semantic colour per band. Always shown alongside the band's text label, so colour is
-    /// never the only channel carrying meaning (WCAG 1.4.1).
+    /// Semantic colour per band, always shown alongside a text label.
     var tint: Color {
         switch self {
         case .excellent, .good: return .green

@@ -17,7 +17,7 @@ let package = Package(
         .library(name: "ActivityPresentation", targets: ["ActivityPresentation"]),
     ],
     targets: [
-        // Pure model + business rules. No networking, no UI, no Foundation beyond Date/TimeZone.
+        // Pure model + business rules. No networking, no UI.
         .target(name: "ActivityDomain"),
 
         // Open-Meteo API client, DTOs and repository implementations. Depends only on Domain.
